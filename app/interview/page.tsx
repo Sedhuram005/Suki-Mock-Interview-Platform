@@ -160,8 +160,6 @@ export default function InterviewPage() {
         name={name}
         refId={refId}
         micReady={!!stream}
-        answered={answered}
-        total={questions.length}
         deviceLabel={stream?.getAudioTracks()[0]?.label ?? null}
       />
 

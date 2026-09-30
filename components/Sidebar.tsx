@@ -20,12 +20,10 @@ type Props = {
   name: string;
   refId: string | null;
   micReady: boolean;
-  answered?: number;
-  total?: number;
   deviceLabel?: string | null;
 };
 
-export default function Sidebar({ current, name, refId, micReady, answered = 0, total = 0, deviceLabel }: Props) {
+export default function Sidebar({ current, name, refId, micReady, deviceLabel }: Props) {
   return (
     <aside className="hidden w-80 shrink-0 flex-col bg-gradient-to-b from-slate-900 via-blue-900 to-indigo-900 text-white lg:flex shadow-2xl">
       <div className="flex h-20 items-center gap-4 border-b border-white/10 px-6 backdrop-blur-sm">
@@ -49,20 +47,6 @@ export default function Sidebar({ current, name, refId, micReady, answered = 0, 
             <div className="mt-2 flex items-center gap-2">
               <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
               <p className="text-xs text-blue-200/70">Ref ID: {refId}</p>
-            </div>
-          )}
-          {total > 0 && (
-            <div className="mt-4">
-              <div className="flex items-center justify-between text-xs mb-2">
-                <span className="text-blue-200/70">Progress</span>
-                <span className="font-semibold text-blue-100">{answered}/{total}</span>
-              </div>
-              <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500"
-                  style={{ width: `${(answered / total) * 100}%` }}
-                />
-              </div>
             </div>
           )}
         </div>
