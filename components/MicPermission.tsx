@@ -5,6 +5,7 @@ import {
   ArrowRight,
   CheckCircle2,
   CircleDashed,
+  Loader2,
   LoaderCircle,
   Mic,
   XCircle,
@@ -20,14 +21,12 @@ const STATUS_META = {
   denied: { label: "Denied", classes: "bg-red-50 text-red-800", Icon: XCircle },
 } satisfies Record<Status, { label: string; classes: string; Icon: typeof CircleDashed }>;
 
-type MicPermissionProps = {
-  onGranted: (stream: MediaStream) => void;
-  onContinue: () => void;
-};
+type Props = { onGranted: (stream: MediaStream) => void; onContinue: () => void; continuing?: boolean };
 
-export default function MicPermission({ onGranted, onContinue }: MicPermissionProps) {
+export default function MicPermission({ onGranted, onContinue, continuing }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   useEffect(() => {
     let permission: PermissionStatus | undefined;
@@ -67,6 +66,7 @@ export default function MicPermission({ onGranted, onContinue }: MicPermissionPr
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setStatus("granted");
+      setStream(stream);
       onGranted(stream);
     } catch (caught) {
       setStatus("denied");
@@ -115,9 +115,17 @@ export default function MicPermission({ onGranted, onContinue }: MicPermissionPr
         </div>
       )}
 
+      {status === "granted" && stream && (
+        <p className="mt-1 text-xs text-slate-500">Device: {stream?.getAudioTracks()[0]?.label || "Default microphone"}</p>
+      )}
+
       {status === "granted" ? (
-        <button type="button" onClick={onContinue} className={`${btnPrimary} w-full`}>
-          Continue to interview <ArrowRight size={16} aria-hidden="true" />
+        <button onClick={onContinue} disabled={continuing} className={`${btnPrimary} w-full`}>
+          {continuing ? (
+            <><Loader2 size={16} className="animate-spin" /> Starting session...</>
+          ) : (
+            <>Continue to interview <ArrowRight size={16} /></>
+          )}
         </button>
       ) : (
         <button

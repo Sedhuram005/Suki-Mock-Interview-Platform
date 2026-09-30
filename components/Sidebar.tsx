@@ -15,14 +15,15 @@ export const STEPS = [
   { label: "Completion", hint: "Assessment submitted", icon: Flag },
 ];
 
-type SidebarProps = {
+type Props = {
   current: number;
   name: string;
   refId: string | null;
   micReady: boolean;
+  deviceLabel?: string | null;
 };
 
-export default function Sidebar({ current, name, refId, micReady }: SidebarProps) {
+export default function Sidebar({ current, name, refId, micReady, deviceLabel }: Props) {
   return (
     <aside className="hidden w-72 shrink-0 flex-col bg-[#0a2540] text-white lg:flex">
       <div className="flex h-16 items-center gap-3 border-b border-white/10 px-6">
@@ -90,6 +91,9 @@ export default function Sidebar({ current, name, refId, micReady }: SidebarProps
             {micReady ? "Ready" : "Not checked"}
           </span>
         </div>
+        {deviceLabel && (
+          <p className="truncate px-1 text-xs text-blue-200/60" title={deviceLabel}>{deviceLabel}</p>
+        )}
         <p className="flex items-center gap-2 px-1 text-xs text-blue-200/70">
           <LifeBuoy size={14} aria-hidden="true" /> Need help? Contact your test coordinator.
         </p>

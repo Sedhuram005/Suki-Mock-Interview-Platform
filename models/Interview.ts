@@ -12,10 +12,22 @@ const AnswerSchema = new Schema(
   { _id: false }
 );
 
+const DeviceSchema = new Schema(
+  {
+    label: String,
+    sampleRate: Number,
+    channelCount: Number,
+    echoCancellation: Boolean,
+    userAgent: String,
+  },
+  { _id: false }
+);
+
 const InterviewSchema = new Schema(
   {
     sessionName: { type: String, required: true, trim: true },
     status: { type: String, enum: ["In Progress", "Completed"], default: "In Progress" },
+    device: { type: DeviceSchema, default: undefined },
     answers: { type: [AnswerSchema], default: [] },
   },
   { timestamps: true }
