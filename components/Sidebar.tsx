@@ -85,25 +85,26 @@ export default function Sidebar({
 
   return (
     <aside
-      className="hidden lg:flex shrink-0 flex-col bg-white m-3 overflow-y-auto overflow-x-hidden"
+      className="hidden lg:flex shrink-0 flex-col m-3 overflow-y-auto overflow-x-hidden"
       style={{
         width: "320px",
         borderRadius: "40px",
-        border: "1.5px solid #E2E8F0",
-        boxShadow: "0 4px 32px rgba(30,58,138,0.08), 0 1px 4px rgba(0,0,0,0.06)",
+        background: "linear-gradient(135deg, #2563EB 0%, #1E40AF 100%)",
+        border: "1.5px solid #1E40AF",
+        boxShadow: "0 4px 32px rgba(37,99,235,0.25), 0 1px 4px rgba(0,0,0,0.1)",
       }}
     >
       {/* ─── HEADER ─── */}
-      <div className="px-6 pt-6 pb-4" style={{ borderBottom: "1px solid #F1F5F9" }}>
+      <div className="px-6 pt-6 pb-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.15)" }}>
         <div className="flex items-center justify-between">
-          <h2 className="text-[18px] font-black text-slate-900 tracking-tight">
+          <h2 className="text-[18px] font-black text-white tracking-tight">
             Candidate Portal
           </h2>
           <span
-            className="flex items-center gap-1 text-[10px] font-bold text-blue-600"
+            className="flex items-center gap-1 text-[10px] font-bold text-white"
             style={{
-              background: "#EFF6FF",
-              border: "1.5px solid #BFDBFE",
+              background: "rgba(255,255,255,0.15)",
+              border: "1.5px solid rgba(255,255,255,0.3)",
               borderRadius: "20px",
               padding: "4px 10px",
             }}
@@ -115,14 +116,14 @@ export default function Sidebar({
       </div>
 
       {/* ─── PROFILE CARD ─── */}
-      <div className="px-4 py-4" style={{ borderBottom: "1px solid #F1F5F9" }}>
+      <div className="px-4 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.15)" }}>
         <button
           type="button"
           onClick={onOpenProfile}
-          className="w-full flex items-center gap-4 cursor-pointer text-left transition-colors duration-200 hover:bg-slate-50"
+          className="w-full flex items-center gap-4 cursor-pointer text-left transition-colors duration-200 hover:bg-white/10"
           style={{
-            background: "#FFFFFF",
-            border: "1.5px solid #E2E8F0",
+            background: "rgba(255,255,255,0.1)",
+            border: "1.5px solid rgba(255,255,255,0.2)",
             borderRadius: "20px",
             padding: "16px",
           }}
@@ -135,65 +136,65 @@ export default function Sidebar({
                 width: "52px",
                 height: "52px",
                 borderRadius: "16px",
-                background: "#2563EB",
-                boxShadow: "0 4px 16px rgba(37,99,235,0.3)",
+                background: "rgba(255,255,255,0.2)",
+                boxShadow: "0 4px 16px rgba(255,255,255,0.15)",
               }}
             >
               {initial}
             </div>
             <span
-              className="absolute -bottom-1 -right-1 flex items-center justify-center bg-blue-500 rounded-full"
-              style={{ width: "18px", height: "18px", border: "2px solid white" }}
+              className="absolute -bottom-1 -right-1 flex items-center justify-center bg-white rounded-full"
+              style={{ width: "18px", height: "18px", border: "2px solid #1E40AF" }}
             >
-              <Check size={10} color="white" strokeWidth={3} />
+              <Check size={10} color="#1E40AF" strokeWidth={3} />
             </span>
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-bold text-slate-900 truncate">{displayName}</p>
-            <p className="text-[12px] font-semibold text-blue-600 truncate mt-0.5">{role}</p>
-            <p className="text-[11px] text-slate-400 truncate mt-0.5">{emailVal}</p>
+            <p className="text-[14px] font-bold text-white truncate">{displayName}</p>
+            <p className="text-[12px] font-semibold text-blue-100 truncate mt-0.5">{role}</p>
+            <p className="text-[11px] text-blue-200 truncate mt-0.5">{emailVal}</p>
           </div>
 
-          <ChevronRight size={16} className="shrink-0 text-slate-300" />
+          <ChevronRight size={16} className="shrink-0 text-blue-200" />
         </button>
       </div>
 
       {/* ─── INFO ROWS ─── */}
-      <div className="px-6 py-3 space-y-0" style={{ borderBottom: "1px solid #F1F5F9" }}>
+      <div className="px-6 py-3 space-y-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.15)" }}>
         {/* Session Timer */}
-        <div className="flex items-center justify-between py-3" style={{ borderBottom: "1px solid #F8FAFC" }}>
-          <span className="flex items-center gap-2 text-[12px] text-slate-500 font-medium">
-            <Radio size={14} className="text-emerald-500" />
+        <div className="flex items-center justify-between py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+          <span className="flex items-center gap-2 text-[12px] text-blue-100 font-medium">
+            <Radio size={14} className="text-emerald-400" />
             Session Time:
           </span>
-          <span className="text-[13px] font-bold text-slate-900 font-mono">{fmtTime(tick)}</span>
+          <span className="text-[13px] font-bold text-white font-mono">{fmtTime(tick)}</span>
         </div>
 
         {/* Mic Status */}
-        <div className="flex items-center justify-between py-3" style={{ borderBottom: "1px solid #F8FAFC" }}>
-          <span className="flex items-center gap-2 text-[12px] text-slate-500 font-medium">
-            <Mic size={14} className={micReady ? "text-emerald-500" : "text-slate-400"} />
+        <div className="flex items-center justify-between py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+          <span className="flex items-center gap-2 text-[12px] text-blue-100 font-medium">
+            <Mic size={14} className={micReady ? "text-emerald-400" : "text-blue-300"} />
             Microphone:
           </span>
-          <span className={`text-[13px] font-bold ${micReady ? "text-emerald-600" : "text-slate-400"}`}>
+          <span className={`text-[13px] font-bold ${micReady ? "text-emerald-400" : "text-blue-300"}`}>
             {micReady ? "Calibrated" : "Standby"}
           </span>
         </div>
 
         {/* AI Engine */}
         <div className="flex items-center justify-between py-3">
-          <span className="flex items-center gap-2 text-[12px] text-slate-500 font-medium">
-            <Cpu size={14} className="text-blue-500" />
+          <span className="flex items-center gap-2 text-[12px] text-blue-100 font-medium">
+            <Cpu size={14} className="text-blue-300" />
             AI Engine:
           </span>
-          <span className="text-[13px] font-bold text-slate-900">Whisper · STAR</span>
+          <span className="text-[13px] font-bold text-white">Whisper · STAR</span>
         </div>
       </div>
 
       {/* ─── INTERVIEW STAGES ─── */}
-      <div className="px-4 py-4 flex-1" style={{ borderBottom: "1px solid #F1F5F9" }}>
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400 px-2 mb-3">
+      <div className="px-4 py-4 flex-1" style={{ borderBottom: "1px solid rgba(255,255,255,0.15)" }}>
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-blue-200 px-2 mb-3">
           Interview Stages
         </p>
         <div className="space-y-2">
@@ -209,13 +210,13 @@ export default function Sidebar({
                 style={{
                   borderRadius: "16px",
                   padding: "12px 14px",
-                  background: active ? "#2563EB" : complete ? "#F0FDF4" : "#F8FAFC",
+                  background: active ? "rgba(255,255,255,0.25)" : complete ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.08)",
                   border: active
-                    ? "1.5px solid #2563EB"
+                    ? "1.5px solid rgba(255,255,255,0.4)"
                     : complete
-                    ? "1.5px solid #86EFAC"
-                    : "1.5px solid #E2E8F0",
-                  boxShadow: active ? "0 4px 16px rgba(37,99,235,0.25)" : "none",
+                    ? "1.5px solid rgba(16,185,129,0.4)"
+                    : "1.5px solid rgba(255,255,255,0.15)",
+                  boxShadow: active ? "0 4px 16px rgba(255,255,255,0.15)" : "none",
                 }}
               >
                 {/* Icon */}
@@ -225,25 +226,25 @@ export default function Sidebar({
                     width: 36,
                     height: 36,
                     borderRadius: 12,
-                    background: complete ? "#059669" : active ? "rgba(255,255,255,0.2)" : "#E2E8F0",
-                    boxShadow: complete ? "0 2px 8px rgba(5,150,105,0.3)" : "none",
+                    background: complete ? "#10B981" : active ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.15)",
+                    boxShadow: complete ? "0 2px 8px rgba(16,185,129,0.3)" : "none",
                   }}
                 >
                   {complete
                     ? <Check size={17} color="white" strokeWidth={2.5} />
-                    : <Icon size={17} color={active ? "white" : "#64748B"} />
+                    : <Icon size={17} color={active ? "white" : "#BFDBFE"} />
                   }
                 </span>
 
                 <div className="min-w-0 flex-1">
-                  <p className={`text-[13px] font-bold leading-tight ${active ? "text-white" : complete ? "text-emerald-800" : "text-slate-700"}`}>
+                  <p className={`text-[13px] font-bold leading-tight ${active ? "text-white" : complete ? "text-emerald-300" : "text-blue-100"}`}>
                     {step.fullLabel}
                   </p>
-                  <p className={`text-[10px] mt-0.5 font-semibold ${active ? "text-blue-100" : complete ? "text-emerald-600" : "text-slate-400"}`}>
+                  <p className={`text-[10px] mt-0.5 font-semibold ${active ? "text-blue-100" : complete ? "text-emerald-400" : "text-blue-300"}`}>
                     {complete ? "✓ Completed" : active ? "In Progress" : "Pending"}
                   </p>
                   {active && index === 1 && (
-                    <div className="mt-2 h-1 w-full rounded-full bg-blue-400/30">
+                    <div className="mt-2 h-1 w-full rounded-full bg-white/30">
                       <div
                         className="h-full rounded-full bg-white transition-all duration-500"
                         style={{ width: `${(questionIndex / totalQuestions) * 100}%` }}
@@ -271,14 +272,14 @@ export default function Sidebar({
         {/* Home button */}
         <Link
           href="/"
-          className="flex items-center justify-center gap-2 w-full bg-white hover:bg-slate-50 text-slate-700 font-bold text-[13px] transition-colors duration-200"
+          className="flex items-center justify-center gap-2 w-full bg-white/10 hover:bg-white/20 text-white font-bold text-[13px] transition-colors duration-200"
           style={{
             borderRadius: "16px",
             padding: "12px 16px",
-            border: "1.5px solid #E2E8F0",
+            border: "1.5px solid rgba(255,255,255,0.2)",
           }}
         >
-          <Home size={16} className="text-slate-500" />
+          <Home size={16} className="text-blue-200" />
           Back to Home
         </Link>
 
@@ -287,12 +288,12 @@ export default function Sidebar({
           <button
             type="button"
             onClick={onLogout}
-            className="flex items-center justify-center gap-2 w-full text-slate-400 hover:text-red-600 hover:bg-red-50 font-semibold text-[12px] cursor-pointer transition-all duration-200"
+            className="flex items-center justify-center gap-2 w-full text-blue-200 hover:text-white hover:bg-white/10 font-semibold text-[12px] cursor-pointer transition-all duration-200"
             style={{
               borderRadius: "14px",
               padding: "10px 16px",
-              border: "1px solid #F1F5F9",
-              background: "white",
+              border: "1px solid rgba(255,255,255,0.15)",
+              background: "rgba(255,255,255,0.05)",
             }}
           >
             <LogOut size={14} />
