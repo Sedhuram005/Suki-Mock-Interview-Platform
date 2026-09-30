@@ -1,500 +1,990 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
-  CheckCircle2,
-  Clock,
-  Headphones,
-  Mic,
-  Play,
   ShieldCheck,
-  Sparkles,
-  Star,
-  TrendingUp,
-  Users,
-  Zap,
-  Award,
+  Mail,
   Lock,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  Sparkles,
+  CheckCircle2,
+  Mic,
+  Database,
+  User,
+  LogOut,
+  Phone,
+  GraduationCap,
+  Check,
+  Globe,
+  Hexagon,
+  Layers,
   BarChart3,
+  X,
+  Code2,
+  Brain,
+  Award,
 } from "lucide-react";
-import { btnPrimary, btnSecondary, card } from "@/lib/ui";
-
-const features = [
-  {
-    icon: Mic,
-    title: "AI-Powered Voice Analysis",
-    description: "Advanced speech recognition technology captures and analyzes your responses with precision.",
-    gradient: "from-blue-500 to-cyan-500",
-  },
-  {
-    icon: TrendingUp,
-    title: "Real-Time Transcription",
-    description: "Watch your answers transcribed instantly as you speak, with AI-powered accuracy.",
-    gradient: "from-purple-500 to-pink-500",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Enterprise Security",
-    description: "Bank-grade encryption and secure storage protect your data at every step.",
-    gradient: "from-emerald-500 to-teal-500",
-  },
-];
-
-const benefits = [
-  {
-    icon: Clock,
-    title: "Time Efficient",
-    description: "Complete assessments in under 10 minutes with streamlined questions.",
-  },
-  {
-    icon: Star,
-    title: "Fair Evaluation",
-    description: "Objective AI analysis removes human bias from the screening process.",
-  },
-  {
-    icon: BarChart3,
-    title: "Detailed Insights",
-    description: "Comprehensive analytics provide deep understanding of candidate capabilities.",
-  },
-];
-
-const requirements = [
-  {
-    icon: Headphones,
-    title: "Audio Equipment",
-    description: "Functional microphone with clear audio quality",
-  },
-  {
-    icon: Zap,
-    title: "Stable Connection",
-    description: "Reliable internet for seamless recording",
-  },
-  {
-    icon: Users,
-    title: "Quiet Space",
-    description: "Distraction-free environment for best results",
-  },
-];
-
-const testimonials = [
-  {
-    name: "Sarah Johnson",
-    role: "HR Director",
-    company: "TechCorp Inc.",
-    content: "This platform revolutionized our hiring process. The AI voice assessments are incredibly accurate and save us hours of time.",
-    rating: 5,
-  },
-  {
-    name: "Michael Chen",
-    role: "Recruitment Lead",
-    company: "InnovateLabs",
-    content: "The professional design and ease of use made implementation seamless. Candidates love the modern experience.",
-    rating: 5,
-  },
-];
-
-const stats = [
-  { value: "98%", label: "Accuracy Rate" },
-  { value: "50K+", label: "Assessments" },
-  { value: "200+", label: "Companies" },
-  { value: "4.9/5", label: "User Rating" },
-];
+import UserDetailsModal, { UserDetails } from "@/components/UserDetailsModal";
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState<"signin" | "register">("signin");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userData, setUserData] = useState<UserDetails | null>(null);
+  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [tracksModalOpen, setTracksModalOpen] = useState(false);
+  const [scoringModalOpen, setScoringModalOpen] = useState(false);
+
+  // Sign In form state
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  // Register form state
+  const [regFirstName, setRegFirstName] = useState("");
+  const [regLastName, setRegLastName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPhone, setRegPhone] = useState("");
+  const [regProfession, setRegProfession] = useState("Full Stack Developer");
+  const [regEducation, setRegEducation] = useState("B.Tech / B.E. Computer Science");
+  const [regUniversity, setRegUniversity] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [regError, setRegError] = useState("");
+  const [regSuccess, setRegSuccess] = useState("");
+  const [regLoading, setRegLoading] = useState(false);
+
+  // Check stored user session on mount
+  useEffect(() => {
+    const loggedIn = localStorage.getItem("isLoggedIn") === "true";
+    const rawUserData = localStorage.getItem("userData");
+    setIsLoggedIn(loggedIn);
+    if (rawUserData) {
+      try {
+        setUserData(JSON.parse(rawUserData));
+      } catch (err) {
+        console.error("Could not parse user data", err);
+      }
+    }
+  }, []);
+
+  // Handle Login Submit
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError("");
+    setLoginLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to log in.");
+      }
+
+      localStorage.setItem("userData", JSON.stringify(data.user));
+      localStorage.setItem("userEmail", data.user.email);
+      localStorage.setItem("isLoggedIn", "true");
+
+      setIsLoggedIn(true);
+      setUserData(data.user);
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setLoginError(err.message || "Invalid credentials. Please verify your email and password.");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  // Handle Register Submit - Stores ALL data in MongoDB
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegError("");
+    setRegSuccess("");
+    setRegLoading(true);
+
+    if (!regFirstName.trim() || !regLastName.trim() || !regEmail.trim() || !regPassword) {
+      setRegError("Please provide first name, last name, email, and password.");
+      setRegLoading(false);
+      return;
+    }
+
+    try {
+      const payload = {
+        firstName: regFirstName.trim(),
+        lastName: regLastName.trim(),
+        email: regEmail.trim(),
+        password: regPassword,
+        phone: regPhone.trim(),
+        profession: regProfession.trim(),
+        education: regEducation.trim(),
+        university: regUniversity.trim(),
+        location: "Bengaluru, India",
+        country: "India",
+        skills: "React, Next.js, Node.js, TypeScript, Python, SQL",
+      };
+
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Registration failed.");
+      }
+
+      localStorage.setItem("userData", JSON.stringify(data.user));
+      localStorage.setItem("userEmail", data.user.email);
+      localStorage.setItem("isLoggedIn", "true");
+
+      setRegSuccess("Account registered and synchronized to MongoDB successfully!");
+      setIsLoggedIn(true);
+      setUserData(data.user);
+    } catch (err: any) {
+      console.error("Registration error:", err);
+      setRegError(err.message || "Failed to complete registration.");
+    } finally {
+      setRegLoading(false);
+    }
+  };
+
+  // Demo auto-fill helpers
+  const handleDemoLoginFill = () => {
+    setLoginEmail("sedhuraman6677@gmail.com");
+    setLoginPassword("Password123");
+    setLoginError("");
+  };
+
+  const handleDemoRegisterFill = () => {
+    setRegFirstName("Sedhu");
+    setRegLastName("Raman");
+    setRegEmail("sedhuraman6677@gmail.com");
+    setRegPhone("+91 7338471266");
+    setRegProfession("Full Stack Software Engineer");
+    setRegEducation("B.Tech Computer Science");
+    setRegUniversity("National Institute of Technology");
+    setRegPassword("Password123");
+    setRegError("");
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("userData");
+    localStorage.removeItem("userEmail");
+    setIsLoggedIn(false);
+    setUserData(null);
+  };
+
+  const candidateDisplayName =
+    userData?.name ||
+    (userData?.firstName && userData?.lastName
+      ? `${userData.firstName} ${userData.lastName}`.trim()
+      : "Candidate");
+
   return (
-    <div className="min-h-screen bg-white">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 border-b border-slate-200/50 bg-white/80 backdrop-blur-xl transition-all duration-300">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <span className="grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 text-white shadow-xl shadow-blue-500/30">
-                <ShieldCheck size={26} aria-hidden="true" />
-              </span>
-              <div className="absolute -top-1 -right-1 size-3 rounded-full bg-emerald-500 ring-2 ring-white" />
-            </div>
-            <div>
-              <p className="font-display text-lg font-bold tracking-tight text-slate-900">TalentIQ</p>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-blue-600">Assessment Portal</p>
-            </div>
+    <div className="relative min-h-screen w-full flex flex-col justify-between bg-white text-slate-900 selection:bg-blue-600 selection:text-white font-sans overflow-x-hidden">
+      {/* ================= FLOWING CYAN-BLUE & WHITE WAVE BACKGROUND ================= */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        {/* Full-bleed fluid cyan-blue & white silk wave background */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
+          style={{ backgroundImage: "url('/bg-wave.jpg')" }}
+        />
+        {/* Ultra-subtle overlay for optimal contrast and readability */}
+        <div className="absolute inset-0 bg-white/15 backdrop-blur-[0.5px]" />
+      </div>
+
+      {/* ================= TOP NAVIGATION BAR (CLEAN WHITE & BLUE GLASS) ================= */}
+      <header className="relative z-20 w-full px-6 sm:px-12 lg:px-20 py-4 flex items-center justify-between border-b border-blue-100/60 bg-white/80 sticky top-0 backdrop-blur-md">
+        {/* Left: Hexagon Icon + Company Title */}
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="relative flex size-9 items-center justify-center rounded-xl bg-blue-50 border border-blue-200">
+            <Hexagon size={22} className="stroke-[2.4] text-blue-600 transition-transform group-hover:scale-110" />
+            <div className="absolute size-2 rounded-full bg-blue-600" />
           </div>
-          <div className="flex items-center gap-4">
-            <Link
-              href="#features"
-              className="hidden text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 sm:block"
-            >
-              Features
-            </Link>
-            <Link
-              href="#how-it-works"
-              className="hidden text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 sm:block"
-            >
-              How It Works
-            </Link>
+          <span className="font-display text-sm sm:text-base font-extrabold uppercase tracking-[0.25em] text-slate-900">
+            Talent<span className="text-blue-600">IQ</span>
+          </span>
+        </Link>
+
+        {/* Center / Right Purpose-Built Platform Navigation */}
+        <div className="flex items-center gap-4 sm:gap-8">
+          <nav className="hidden lg:flex items-center gap-7 text-xs font-bold uppercase tracking-[0.15em] text-slate-600">
             <Link
               href="/interview"
-              className={`${btnPrimary} px-6 py-2.5 text-sm shadow-lg shadow-blue-500/25 hover:shadow-blue-500/30`}
+              className="flex items-center gap-1.5 text-blue-600 font-extrabold hover:text-blue-800 transition-colors py-1 border-b-2 border-blue-600"
             >
-              Start Assessment
+              <Mic size={14} className="text-blue-600" />
+              <span>Voice Assessment</span>
             </Link>
-          </div>
-        </div>
-      </nav>
+            <button
+              type="button"
+              onClick={() => setTracksModalOpen(true)}
+              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors cursor-pointer py-1"
+            >
+              <Layers size={14} className="text-blue-600" />
+              <span>Interview Tracks</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setScoringModalOpen(true)}
+              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors cursor-pointer py-1"
+            >
+              <BarChart3 size={14} className="text-blue-600" />
+              <span>AI Scoring Rubric</span>
+            </button>
+            {isLoggedIn && (
+              <button
+                type="button"
+                onClick={() => setUserModalOpen(true)}
+                className="flex items-center gap-1.5 hover:text-blue-600 transition-colors cursor-pointer py-1"
+              >
+                <User size={14} className="text-blue-600" />
+                <span>Candidate Dossier</span>
+              </button>
+            )}
+          </nav>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/50">
-        {/* Decorative elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 size-96 rounded-full bg-blue-400/10 blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 size-96 rounded-full bg-indigo-400/10 blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[800px] rounded-full bg-gradient-to-r from-blue-100/20 to-indigo-100/20 blur-3xl" />
-        </div>
+          {/* Action CTAs: Start Interview & Auth Controls */}
+          {isLoggedIn ? (
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => setUserModalOpen(true)}
+                className="hidden sm:flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/80 px-3.5 py-1.5 text-xs font-bold text-blue-900 hover:bg-blue-100 transition-all cursor-pointer shadow-sm"
+              >
+                <div className="size-5 rounded-full bg-blue-600 text-white text-[10px] grid place-items-center font-bold">
+                  {candidateDisplayName.charAt(0).toUpperCase()}
+                </div>
+                <span className="max-w-[120px] truncate">{candidateDisplayName}</span>
+              </button>
 
-        <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-40">
-          <div className="mx-auto max-w-4xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/80 px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm backdrop-blur-sm fade-up">
-              <Sparkles size={16} className="text-blue-600" />
-              <span>AI-Powered Voice Assessment Platform</span>
-            </div>
-            
-            <h1 className="mt-8 font-display text-5xl font-bold tracking-tight text-slate-900 sm:text-6xl lg:text-7xl fade-up" style={{ animationDelay: '0.1s' }}>
-              Transform Your
-              <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                {" "}Hiring Process
-              </span>
-            </h1>
-            
-            <p className="mt-6 text-xl leading-relaxed text-slate-600 sm:text-2xl fade-up" style={{ animationDelay: '0.2s' }}>
-              Experience the future of candidate screening with our advanced voice-based assessment platform. 
-              AI-powered transcription and analysis deliver accurate, unbiased evaluations in minutes.
-            </p>
-            
-            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row fade-up" style={{ animationDelay: '0.3s' }}>
               <Link
                 href="/interview"
-                className={`${btnPrimary} group relative overflow-hidden px-8 py-4 text-base shadow-xl shadow-blue-500/25 hover:shadow-blue-500/30`}
+                className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer"
               >
-                <span className="relative z-10 flex items-center gap-2">
-                  Start Free Assessment
-                  <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 transition-opacity group-hover:opacity-100" />
+                <Mic size={14} />
+                <span>Launch Interview</span>
+                <ArrowRight size={13} />
               </Link>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                title="Sign out"
+                className="size-9 rounded-full border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 grid place-items-center text-slate-500 transition-all cursor-pointer shadow-sm"
+              >
+                <LogOut size={14} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveTab("register")}
+                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-slate-700 hover:text-blue-600 px-3 py-2 cursor-pointer transition-colors"
+              >
+                <Sparkles size={13} className="text-blue-600" />
+                <span>Register Profile</span>
+              </button>
+
               <Link
-                href="#how-it-works"
-                className={`${btnSecondary} group flex items-center gap-2 px-8 py-4 text-base`}
+                href="/interview"
+                className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-[0.12em] shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer"
               >
-                <Play size={18} className="text-blue-600" />
-                Watch Demo
+                <Mic size={14} />
+                <span>Start Interview</span>
+                <ArrowRight size={13} />
+              </Link>
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* ================= MAIN CONTENT: LEFT INTRO / RIGHT WHITE & BLUE SIGN IN CARD ================= */}
+      <main className="relative z-10 flex-1 flex items-center px-6 sm:px-12 lg:px-20 py-10 lg:py-16">
+        <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+          
+          {/* ================= LEFT SIDE: WELCOME & PLATFORM INTRO ================= */}
+          <div className="lg:col-span-6 space-y-7 lg:pr-6">
+            
+            {/* Headline */}
+            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.1]">
+              Welcome to <br />
+              <span className="text-blue-600">
+                TalentIQ Portal
+              </span>
+            </h1>
+
+            {/* Intro Paragraph */}
+            <p className="text-base sm:text-lg text-slate-700 leading-relaxed font-normal max-w-xl">
+              TalentIQ is a comprehensive practice, assignment, and voice interview platform designed to help new graduates and candidates enhance their technical depth, master real-time spoken communication, and prepare for premier career opportunities.
+            </p>
+
+            {/* Direct Action Link - Solid Non-Transparent High-Impact Button */}
+            <div className="pt-2">
+              <Link
+                href="/interview"
+                className="inline-flex items-center gap-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-base px-8 py-4 shadow-xl shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] border-2 border-blue-600 cursor-pointer"
+              >
+                <Mic size={20} />
+                <span>Launch Voice Assessment</span>
+                <ArrowRight size={20} />
               </Link>
             </div>
 
-            {/* Trust indicators */}
-            <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-sm text-slate-500 fade-up" style={{ animationDelay: '0.4s' }}>
-              <div className="flex items-center gap-2">
-                <Lock size={16} className="text-emerald-600" />
-                <span>Bank-Level Security</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Award size={16} className="text-blue-600" />
-                <span>GDPR Compliant</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Zap size={16} className="text-amber-600" />
-                <span>Instant Results</span>
-              </div>
-            </div>
           </div>
 
-          {/* Stats */}
-          <div className="mx-auto mt-20 max-w-5xl fade-up" style={{ animationDelay: '0.5s' }}>
-            <div className="grid grid-cols-2 gap-8 rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-xl backdrop-blur-sm sm:grid-cols-4">
-              {stats.map((stat, index) => (
-                <div key={stat.label} className="text-center">
-                  <p className="font-display text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                    {stat.value}
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-slate-600">{stat.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section id="features" className="py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
-              <Star size={16} />
-              Powerful Features
-            </div>
-            <h2 className="mt-6 font-display text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-              Everything You Need
-            </h2>
-            <p className="mt-4 text-xl text-slate-600">
-              Our platform combines cutting-edge AI with intuitive design to deliver exceptional assessment experiences.
-            </p>
-          </div>
-
-          <div className="mt-20 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature, index) => (
-              <div
-                key={feature.title}
-                className={`${card} group relative overflow-hidden p-8 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-2 fade-up`}
-                style={{ animationDelay: `${index * 0.15}s` }}
-              >
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 transition-opacity duration-500 group-hover:opacity-5`} />
-                <div className="relative">
-                  <div className={`inline-flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br ${feature.gradient} text-white shadow-xl shadow-blue-500/25 transition-transform duration-300 group-hover:scale-110`}>
-                    <feature.icon size={32} aria-hidden="true" />
+          {/* ================= RIGHT SIDE: WHITE AND BLUE AUTH CARD ================= */}
+          <div className="lg:col-span-6 w-full max-w-[540px] mx-auto lg:ml-auto">
+            {isLoggedIn && userData ? (
+              /* ================= LOGGED IN CANDIDATE DOSSIER CARD ================= */
+              <div className="rounded-[35px] border-2 border-blue-200 bg-white p-8 sm:p-10 shadow-2xl shadow-blue-950/10 text-slate-900">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-2 rounded-full bg-blue-600" />
+                    <h2 className="font-display text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                      Candidate Portal
+                    </h2>
                   </div>
-                  <h3 className="mt-6 font-display text-xl font-bold text-slate-900">{feature.title}</h3>
-                  <p className="mt-3 text-base leading-relaxed text-slate-600">{feature.description}</p>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3.5 py-1.5 text-xs font-bold text-blue-700">
+                    <CheckCircle2 size={14} className="text-blue-600" /> Verified &amp; Synced
+                  </span>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* Benefits Section */}
-      <section className="bg-gradient-to-br from-slate-50 to-blue-50/30 py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-16 lg:grid-cols-2">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
-                <TrendingUp size={16} />
-                Key Benefits
-              </div>
-              <h2 className="mt-6 font-display text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-                Why Choose Us?
-              </h2>
-              <p className="mt-4 text-xl text-slate-600">
-                Our platform delivers measurable results that transform your recruitment process.
-              </p>
-              
-              <div className="mt-10 space-y-6">
-                {benefits.map((benefit, index) => (
-                  <div key={benefit.title} className="flex items-start gap-4 fade-up" style={{ animationDelay: `${(index + 1) * 0.1}s` }}>
-                    <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25">
-                      <benefit.icon size={24} aria-hidden="true" />
+                <div className="flex items-center gap-5 p-5 rounded-2xl bg-blue-50/80 border border-blue-200 mb-6">
+                  <div className="relative">
+                    <div className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-2xl shadow-md">
+                      {candidateDisplayName.charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                      <h3 className="font-display text-lg font-bold text-slate-900">{benefit.title}</h3>
-                      <p className="mt-1 text-base text-slate-600">{benefit.description}</p>
+                    <div className="absolute -bottom-1 -right-1 grid size-6 place-items-center rounded-full bg-blue-600 text-white ring-2 ring-white">
+                      <Check size={14} className="stroke-[3]" />
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-bold text-slate-900 text-lg truncate">
+                      {candidateDisplayName}
+                    </h3>
+                    <p className="text-sm text-blue-700 font-semibold truncate">
+                      {userData.profession || "Full Stack Candidate"}
+                    </p>
+                    <p className="text-xs text-slate-500 truncate mt-0.5">
+                      {userData.email}
+                    </p>
+                  </div>
+                </div>
 
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl transform rotate-3 opacity-10" />
-              <div className={`${card} relative p-8 shadow-2xl`}>
-                <div className="space-y-6">
-                  {testimonials.map((testimonial, index) => (
-                    <div key={testimonial.name} className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-6 fade-up" style={{ animationDelay: `${(index + 1) * 0.15}s` }}>
-                      <div className="flex items-start gap-4">
-                        <div className="grid size-12 shrink-0 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white font-bold text-lg">
-                          {testimonial.name.charAt(0)}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-1">
-                            {[...Array(testimonial.rating)].map((_, i) => (
-                              <Star key={i} size={16} className="fill-amber-400 text-amber-400" />
-                            ))}
-                          </div>
-                          <p className="mt-3 text-base text-slate-700">{testimonial.content}</p>
-                          <div className="mt-4">
-                            <p className="font-semibold text-slate-900">{testimonial.name}</p>
-                            <p className="text-sm text-slate-600">{testimonial.role} at {testimonial.company}</p>
-                          </div>
-                        </div>
-                      </div>
+                <div className="space-y-3 mb-6 text-sm text-slate-600">
+                  <div className="flex items-center justify-between py-2 border-b border-blue-50">
+                    <span className="font-medium text-slate-500 flex items-center gap-2">
+                      <Database size={15} className="text-blue-600" /> Database Registry:
+                    </span>
+                    <span className="font-bold text-blue-700">MongoDB Synchronized</span>
+                  </div>
+                  {userData.phone && (
+                    <div className="flex items-center justify-between py-2 border-b border-blue-50">
+                      <span className="font-medium text-slate-500 flex items-center gap-2">
+                        <Phone size={15} className="text-blue-600" /> Contact Phone:
+                      </span>
+                      <span className="font-bold text-slate-800">{userData.phone}</span>
                     </div>
-                  ))}
+                  )}
+                  <div className="flex items-center justify-between py-2 border-b border-blue-50">
+                    <span className="font-medium text-slate-500 flex items-center gap-2">
+                      <GraduationCap size={15} className="text-blue-600" /> Education:
+                    </span>
+                    <span className="font-bold text-slate-800 truncate max-w-[220px]">
+                      {userData.education || "Bachelor's Degree"}
+                    </span>
+                  </div>
+                </div>
+
+                <Link
+                  href="/interview"
+                  className="w-full py-4 text-base font-bold text-white rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl shadow-blue-600/30 flex items-center justify-center gap-2.5 mb-3.5 transition-all hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <Mic size={18} />
+                  <span>Launch Voice Interview Directly</span>
+                  <ArrowRight size={18} />
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => setUserModalOpen(true)}
+                  className="w-full py-3.5 text-sm font-bold text-slate-800 rounded-2xl border-2 border-slate-200 bg-white hover:bg-slate-50 shadow-sm flex items-center justify-center gap-2 cursor-pointer mb-3 transition-all"
+                >
+                  <User size={16} className="text-blue-600" />
+                  <span>View Complete Profile Dossier</span>
+                </button>
+
+                <div className="pt-2 text-center">
+                  <button
+                    onClick={handleLogout}
+                    className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:text-rose-600 hover:border-rose-200 shadow-sm transition-colors cursor-pointer"
+                  >
+                    Switch candidate or sign out
+                  </button>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
+            ) : (
+              /* ================= TABBED AUTH & REGISTRATION CARD (WHITE AND BLUE) ================= */
+              <div className="rounded-[35px] border-2 border-blue-200 bg-white p-8 sm:p-10 shadow-2xl shadow-blue-950/10 text-slate-900">
+                {/* Segmented Tab Switcher (Solid Non-Transparent Buttons) */}
+                <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 border-2 border-blue-100 mb-7">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("signin")}
+                    className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      activeTab === "signin"
+                        ? "bg-blue-600 text-white shadow-md border-2 border-blue-600"
+                        : "bg-white text-slate-800 hover:text-blue-600 border-2 border-slate-200 shadow-sm"
+                    }`}
+                  >
+                    <span>Sign In</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("register")}
+                    className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      activeTab === "register"
+                        ? "bg-blue-600 text-white shadow-md border-2 border-blue-600"
+                        : "bg-white text-slate-800 hover:text-blue-600 border-2 border-slate-200 shadow-sm"
+                    }`}
+                  >
+                    <Sparkles size={14} className={activeTab === "register" ? "text-cyan-200" : "text-blue-600"} />
+                    <span>Register Candidate</span>
+                  </button>
+                </div>
 
-      {/* How It Works */}
-      <section id="how-it-works" className="py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700">
-              <Play size={16} />
-              Simple Process
-            </div>
-            <h2 className="mt-6 font-display text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-              How It Works
-            </h2>
-            <p className="mt-4 text-xl text-slate-600">
-              Complete your assessment in four simple steps
-            </p>
-          </div>
-
-          <div className="mt-20">
-            <div className="relative">
-              {/* Connection line */}
-              <div className="absolute left-8 top-8 bottom-8 w-0.5 bg-gradient-to-b from-blue-500 via-indigo-500 to-purple-500 hidden lg:block" />
-              
-              <div className="space-y-12 lg:space-y-0">
-                {[
-                  { number: "01", title: "Enter Your Details", description: "Provide your name and basic information to begin the assessment session", icon: Users },
-                  { number: "02", title: "System Check", description: "Verify your microphone and audio equipment are working properly", icon: Headphones },
-                  { number: "03", title: "Voice Assessment", description: "Answer screening questions naturally using your voice with AI transcription", icon: Mic },
-                  { number: "04", title: "Review & Submit", description: "Review your transcribed responses and submit the completed assessment", icon: CheckCircle2 },
-                ].map((step, index) => (
-                  <div key={step.number} className="relative lg:grid lg:grid-cols-3 lg:gap-8 lg:items-center fade-up" style={{ animationDelay: `${(index + 1) * 0.1}s` }}>
-                    <div className={`lg:text-${index % 2 === 0 ? 'right' : 'left'}`}>
-                      <div className="inline-flex size-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white text-2xl font-bold shadow-xl shadow-blue-500/25 ring-4 ring-white">
-                        {step.number}
+                {/* ================= SIGN IN TAB ================= */}
+                {activeTab === "signin" && (
+                  <div>
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-2 rounded-full bg-blue-600" />
+                        <h2 className="font-display text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                          Sign In
+                        </h2>
                       </div>
+                      <button
+                        type="button"
+                        onClick={handleDemoLoginFill}
+                        className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1.5 transition-colors bg-white px-3.5 py-1.5 rounded-xl border-2 border-blue-200 shadow-sm cursor-pointer hover:bg-blue-50"
+                      >
+                        <Sparkles size={13} className="text-blue-600" />
+                        Auto-fill Demo
+                      </button>
                     </div>
-                    <div className={`mt-6 lg:mt-0 lg:col-span-2 lg:text-${index % 2 === 0 ? 'left' : 'right'}`}>
-                      <div className={`${card} p-8 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10`}>
-                        <div className="flex items-center gap-3 mb-4">
-                          <step.icon size={24} className="text-blue-600" />
-                          <h3 className="font-display text-xl font-bold text-slate-900">{step.title}</h3>
-                        </div>
-                        <p className="text-base text-slate-600">{step.description}</p>
+
+                    {loginError && (
+                      <div className="mb-5 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs sm:text-sm font-semibold text-rose-800">
+                        <AlertCircle size={17} className="mt-0.5 shrink-0 text-rose-600" />
+                        <p>{loginError}</p>
                       </div>
+                    )}
+
+                    <form onSubmit={handleLoginSubmit} className="space-y-5">
+                      {/* Email / Mobile */}
+                      <div>
+                        <label
+                          htmlFor="loginEmail"
+                          className="block text-xs sm:text-sm font-bold text-slate-700 mb-2"
+                        >
+                          Email/Mobile Number
+                        </label>
+                        <div className="relative">
+                          <Mail
+                            size={18}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500"
+                          />
+                          <input
+                            id="loginEmail"
+                            type="email"
+                            value={loginEmail}
+                            onChange={(e) => setLoginEmail(e.target.value)}
+                            placeholder="sedhuraman6677@gmail.com"
+                            className="w-full rounded-2xl border-2 border-blue-200 bg-blue-50/30 pl-11 pr-4 py-3.5 sm:py-4 text-sm font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-500/15"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {/* Password */}
+                      <div>
+                        <label
+                          htmlFor="loginPassword"
+                          className="block text-xs sm:text-sm font-bold text-slate-700 mb-2"
+                        >
+                          Password
+                        </label>
+                        <div className="relative">
+                          <Lock
+                            size={18}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500"
+                          />
+                          <input
+                            id="loginPassword"
+                            type={showLoginPassword ? "text" : "password"}
+                            value={loginPassword}
+                            onChange={(e) => setLoginPassword(e.target.value)}
+                            placeholder="••••••••••"
+                            className="w-full rounded-2xl border-2 border-blue-200 bg-blue-50/30 pl-11 pr-12 py-3.5 sm:py-4 text-sm font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-500/15"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowLoginPassword(!showLoginPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors cursor-pointer"
+                          >
+                            {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Prominent High-Impact Blue Sign In Button */}
+                      <button
+                        type="submit"
+                        disabled={loginLoading}
+                        className="w-full mt-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 py-4 text-base font-bold text-white shadow-xl shadow-blue-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                      >
+                        {loginLoading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <div className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                            <span>Signing In...</span>
+                          </span>
+                        ) : (
+                          <span>Sign In</span>
+                        )}
+                      </button>
+                    </form>
+
+                    <div className="mt-6 space-y-2.5 pt-4 border-t border-blue-100 text-center">
+                      <p className="text-xs sm:text-sm text-slate-600">
+                        Don&apos;t have an account?{" "}
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("register")}
+                          className="font-bold text-blue-600 hover:text-blue-800 underline underline-offset-2 cursor-pointer"
+                        >
+                          Register candidate profile &rarr;
+                        </button>
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        By signing in you agree to all our{" "}
+                        <span className="text-blue-600 font-semibold cursor-pointer hover:underline">
+                          terms &amp; conditions
+                        </span>
+                      </p>
                     </div>
                   </div>
-                ))}
+                )}
+
+                {/* ================= REGISTER TAB ================= */}
+                {activeTab === "register" && (
+                  <div>
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-2 rounded-full bg-blue-600" />
+                        <div>
+                          <h2 className="font-display text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                            Register Candidate
+                          </h2>
+                          <p className="text-xs text-slate-500">Stored permanently in MongoDB database</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDemoRegisterFill}
+                        className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1.5 transition-colors bg-white px-3.5 py-1.5 rounded-xl border-2 border-blue-200 shadow-sm cursor-pointer hover:bg-blue-50"
+                      >
+                        <Sparkles size={13} className="text-blue-600" />
+                        Auto-fill Sample
+                      </button>
+                    </div>
+
+                    {regError && (
+                      <div className="mb-4 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs sm:text-sm font-semibold text-rose-800">
+                        <AlertCircle size={16} className="mt-0.5 shrink-0 text-rose-600" />
+                        <p>{regError}</p>
+                      </div>
+                    )}
+
+                    {regSuccess && (
+                      <div className="mb-4 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-3.5 text-xs sm:text-sm font-semibold text-blue-800">
+                        <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-blue-600" />
+                        <p>{regSuccess}</p>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            First Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={regFirstName}
+                            onChange={(e) => setRegFirstName(e.target.value)}
+                            placeholder="Sedhu"
+                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            Last Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={regLastName}
+                            onChange={(e) => setRegLastName(e.target.value)}
+                            placeholder="Raman"
+                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Email Address *
+                        </label>
+                        <div className="relative">
+                          <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-500" />
+                          <input
+                            type="email"
+                            value={regEmail}
+                            onChange={(e) => setRegEmail(e.target.value)}
+                            placeholder="sedhuraman6677@gmail.com"
+                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 pl-10 pr-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            Mobile Phone
+                          </label>
+                          <input
+                            type="tel"
+                            value={regPhone}
+                            onChange={(e) => setRegPhone(e.target.value)}
+                            placeholder="+91 7338471266"
+                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            Target Profession
+                          </label>
+                          <input
+                            type="text"
+                            value={regProfession}
+                            onChange={(e) => setRegProfession(e.target.value)}
+                            placeholder="Full Stack Engineer"
+                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            Degree / Course
+                          </label>
+                          <input
+                            type="text"
+                            value={regEducation}
+                            onChange={(e) => setRegEducation(e.target.value)}
+                            placeholder="B.Tech Computer Science"
+                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            University / College
+                          </label>
+                          <input
+                            type="text"
+                            value={regUniversity}
+                            onChange={(e) => setRegUniversity(e.target.value)}
+                            placeholder="State University"
+                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Password *
+                        </label>
+                        <div className="relative">
+                          <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-500" />
+                          <input
+                            type={showRegPassword ? "text" : "password"}
+                            value={regPassword}
+                            onChange={(e) => setRegPassword(e.target.value)}
+                            placeholder="Create secure password"
+                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 pl-10 pr-10 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowRegPassword(!showRegPassword)}
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors"
+                          >
+                            {showRegPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={regLoading}
+                        className="w-full mt-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 py-3.5 text-sm sm:text-base font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                      >
+                        {regLoading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <div className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                            <span>Registering in MongoDB Database...</span>
+                          </span>
+                        ) : (
+                          <span>Complete Registration &amp; Save to Database</span>
+                        )}
+                      </button>
+                    </form>
+
+                    <div className="mt-4 pt-3 border-t border-blue-100 text-center">
+                      <p className="text-xs sm:text-sm text-slate-600">
+                        Already have an account?{" "}
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("signin")}
+                          className="font-bold text-blue-600 hover:text-blue-800 underline underline-offset-2 cursor-pointer"
+                        >
+                          Sign In here &rarr;
+                        </button>
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
+
         </div>
-      </section>
+      </main>
 
-      {/* Requirements Section */}
-      <section className="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 py-24 text-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-blue-100">
-              <Zap size={16} />
-              Get Ready
-            </div>
-            <h2 className="mt-6 font-display text-4xl font-bold tracking-tight sm:text-5xl">
-              Before You Start
-            </h2>
-            <p className="mt-4 text-xl text-blue-100">
-              Ensure you have everything ready for the best assessment experience
-            </p>
-          </div>
-
-          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {requirements.map((req, index) => (
-              <div
-                key={req.title}
-                className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:scale-105 fade-up"
-                style={{ animationDelay: `${(index + 1) * 0.1}s` }}
-              >
-                <div className="grid size-14 place-items-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/25">
-                  <req.icon size={28} aria-hidden="true" />
-                </div>
-                <h3 className="mt-6 font-display text-lg font-bold">{req.title}</h3>
-                <p className="mt-2 text-base text-blue-100">{req.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="relative overflow-hidden py-24 sm:py-32">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600" />
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yIDItNCAyLTRzLTItMi0yLTJ2MmMwIDItMiA0LTQgNHMtNCAyLTQgMnYtMmMwLTItMi00LTItNHMyLTItMi0ydjJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30" />
-        
-        <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">
-            Ready to Transform Your Hiring?
-          </h2>
-          <p className="mt-6 text-xl text-blue-100">
-            Join thousands of companies using TalentIQ to make better hiring decisions faster.
+      {/* ================= BOTTOM FOOTER (CLEAN WHITE & BLUE GLASS) ================= */}
+      <footer className="relative z-20 w-full px-6 sm:px-12 lg:px-20 py-5 border-t border-white/60 bg-white/70 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+          <p>
+            Copyright &copy; {new Date().getFullYear()} TalentIQ Assessment Platform. All Rights Reserved.
           </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link
-              href="/interview"
-              className="group relative inline-flex items-center gap-2 rounded-2xl bg-white px-8 py-4 text-base font-bold text-blue-600 shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-white/25"
-            >
-              Start Free Assessment
-              <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
-            </Link>
-            <Link
-              href="#features"
-              className="inline-flex items-center gap-2 rounded-2xl border-2 border-white/30 px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:bg-white/10"
-            >
-              Learn More
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white">
-                  <ShieldCheck size={22} aria-hidden="true" />
-                </span>
-                <div>
-                  <p className="font-display text-base font-bold text-slate-900">TalentIQ</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600">Assessment Portal</p>
-                </div>
-              </div>
-              <p className="text-sm text-slate-600">
-                AI-powered voice assessment platform for modern recruitment.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="font-display text-sm font-bold text-slate-900">Product</h3>
-              <ul className="mt-4 space-y-3">
-                <li><Link href="#features" className="text-sm text-slate-600 transition-colors hover:text-slate-900">Features</Link></li>
-                <li><Link href="#how-it-works" className="text-sm text-slate-600 transition-colors hover:text-slate-900">How It Works</Link></li>
-                <li><Link href="/interview" className="text-sm text-slate-600 transition-colors hover:text-slate-900">Start Assessment</Link></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-display text-sm font-bold text-slate-900">Company</h3>
-              <ul className="mt-4 space-y-3">
-                <li><Link href="#" className="text-sm text-slate-600 transition-colors hover:text-slate-900">About Us</Link></li>
-                <li><Link href="#" className="text-sm text-slate-600 transition-colors hover:text-slate-900">Careers</Link></li>
-                <li><Link href="#" className="text-sm text-slate-600 transition-colors hover:text-slate-900">Contact</Link></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-display text-sm font-bold text-slate-900">Legal</h3>
-              <ul className="mt-4 space-y-3">
-                <li><Link href="#" className="text-sm text-slate-600 transition-colors hover:text-slate-900">Privacy Policy</Link></li>
-                <li><Link href="#" className="text-sm text-slate-600 transition-colors hover:text-slate-900">Terms of Service</Link></li>
-                <li><Link href="#" className="text-sm text-slate-600 transition-colors hover:text-slate-900">Cookie Policy</Link></li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-12 border-t border-slate-200 pt-8">
-            <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-              <p className="text-sm text-slate-600">
-                &copy; {new Date().getFullYear()} TalentIQ. All rights reserved.
-              </p>
-              <p className="text-sm text-slate-600">
-                Built with Next.js, MongoDB, and AI-powered voice technology
-              </p>
-            </div>
+          <div className="flex items-center gap-4 text-slate-600">
+            <span>
+              Contact us:{" "}
+              <a href="tel:+917338471266" className="text-blue-600 font-semibold hover:underline">
+                +91-7338471266
+              </a>
+            </span>
+            <span className="text-blue-200">|</span>
+            <a href="mailto:help@talentiq.ai" className="text-blue-600 font-semibold hover:underline">
+              help@talentiq.ai
+            </a>
           </div>
         </div>
       </footer>
+
+      {/* User Details Dossier Modal */}
+      <UserDetailsModal
+        open={userModalOpen}
+        onClose={() => setUserModalOpen(false)}
+        userDetails={userData}
+      />
+
+      {/* ================= INTERVIEW TRACKS MODAL (WHITE & BLUE) ================= */}
+      {tracksModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl rounded-[32px] border-2 border-blue-200 bg-white p-6 sm:p-8 shadow-2xl text-slate-900">
+            <button
+              onClick={() => setTracksModalOpen(false)}
+              className="absolute right-5 top-5 grid size-9 place-items-center rounded-full border border-blue-100 bg-blue-50 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-blue-50 border border-blue-200 text-blue-600">
+                <Layers size={22} />
+              </div>
+              <div>
+                <h3 className="font-display text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  Interview Practice Tracks
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium">
+                  Curated voice assessment domains designed for engineering roles
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 my-6">
+              {[
+                {
+                  title: "Full Stack Engineer",
+                  tags: "React • Next.js • Node • DB",
+                  desc: "Comprehensive assessment covering client architecture, backend APIs, and system design.",
+                  level: "Mid to Senior",
+                },
+                {
+                  title: "Frontend Specialist",
+                  tags: "UI/UX • TypeScript • Performance",
+                  desc: "Deep-dive into component lifecycle, rendering optimization, state, and browser APIs.",
+                  level: "All Levels",
+                },
+                {
+                  title: "Backend & Cloud",
+                  tags: "APIs • Microservices • MongoDB",
+                  desc: "Distributed systems, database indexing, caching strategies, and RESTful contract design.",
+                  level: "Mid to Senior",
+                },
+                {
+                  title: "Behavioral & Leadership",
+                  tags: "STAR Method • Communication",
+                  desc: "Situational scenarios, conflict resolution, project management, and cross-team empathy.",
+                  level: "All Roles",
+                },
+              ].map((track, i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl border-2 border-blue-100 bg-blue-50/40 p-4 transition-all hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm"
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <h4 className="font-bold text-slate-900 text-sm">{track.title}</h4>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-md">
+                      {track.level}
+                    </span>
+                  </div>
+                  <p className="text-xs text-blue-700 font-semibold mb-2">{track.tags}</p>
+                  <p className="text-xs text-slate-600 leading-relaxed mb-3">{track.desc}</p>
+                  <Link
+                    href="/interview"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800"
+                  >
+                    <span>Select &amp; Launch</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-blue-100">
+              <span className="text-xs text-slate-500 font-medium">All tracks powered by real-time AI speech evaluation</span>
+              <Link
+                href="/interview"
+                className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider px-5 py-2.5 shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+              >
+                <Mic size={14} />
+                <span>Launch Assessment</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= AI SCORING RUBRIC MODAL (WHITE & BLUE) ================= */}
+      {scoringModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-xl rounded-[32px] border-2 border-blue-200 bg-white p-6 sm:p-8 shadow-2xl text-slate-900">
+            <button
+              onClick={() => setScoringModalOpen(false)}
+              className="absolute right-5 top-5 grid size-9 place-items-center rounded-full border border-blue-100 bg-blue-50 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-blue-50 border border-blue-200 text-blue-600">
+                <BarChart3 size={22} />
+              </div>
+              <div>
+                <h3 className="font-display text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  AI Evaluation &amp; Scoring Rubric
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium">
+                  Objective criteria evaluated during your live voice interview
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 my-6">
+              {[
+                {
+                  label: "Technical Depth & Precision",
+                  weight: "35%",
+                  desc: "Correctness of algorithmic solutions, architectural reasoning, and domain knowledge.",
+                  bar: "w-[35%]",
+                },
+                {
+                  label: "Spoken Articulation & Clarity",
+                  weight: "25%",
+                  desc: "Crisp voice transmission, concise structure (STAR format), and minimal filler words.",
+                  bar: "w-[25%]",
+                },
+                {
+                  label: "Problem Solving & Trade-offs",
+                  weight: "25%",
+                  desc: "Logical breakdown of ambiguity, alternative considerations, and scalability focus.",
+                  bar: "w-[25%]",
+                },
+                {
+                  label: "Executive Presence & Confidence",
+                  weight: "15%",
+                  desc: "Steady speaking cadence, professional communication, and solution ownership.",
+                  bar: "w-[15%]",
+                },
+              ].map((item, i) => (
+                <div key={i} className="rounded-xl border border-blue-100 bg-blue-50/30 p-3.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-slate-800 text-xs sm:text-sm">{item.label}</span>
+                    <span className="font-extrabold text-blue-600 text-xs bg-blue-100 px-2 py-0.5 rounded-md">
+                      {item.weight}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-blue-100">
+              <span className="text-xs text-slate-500 font-medium">Comprehensive scorecard generated upon completion</span>
+              <Link
+                href="/interview"
+                className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider px-5 py-2.5 shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+              >
+                <Mic size={14} />
+                <span>Start Voice Test</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

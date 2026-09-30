@@ -26,6 +26,8 @@ const DeviceSchema = new Schema(
 const InterviewSchema = new Schema(
   {
     sessionName: { type: String, required: true, trim: true },
+    userEmail: { type: String, lowercase: true, trim: true, default: "" },
+    candidateName: { type: String, trim: true, default: "" },
     status: { type: String, enum: ["In Progress", "Completed"], default: "In Progress" },
     device: { type: DeviceSchema, default: undefined },
     answers: { type: [AnswerSchema], default: [] },

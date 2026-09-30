@@ -11,6 +11,7 @@ import Recorder, { type AnswerData } from "@/components/Recorder";
 import Sidebar, { STEPS } from "@/components/Sidebar";
 import ErrorNote from "@/components/ErrorNote";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import UserDetailsModal from "@/components/UserDetailsModal";
 
 const fmtTime = (s: number) =>
   `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -29,7 +30,17 @@ export default function InterviewPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [online, setOnline] = useState(true);
+  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [userDetails, setUserDetails] = useState<any>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+
+  const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("userData");
+    localStorage.removeItem("userEmail");
+    window.location.href = "/";
+
+  };
 
   // release the microphone when leaving the page
   useEffect(() => () => stream?.getTracks().forEach((t) => t.stop()), [stream]);
@@ -60,13 +71,40 @@ export default function InterviewPage() {
     return () => { window.removeEventListener("online", up); window.removeEventListener("offline", down); };
   }, []);
 
+  // load user details from localStorage and check authentication
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+    if (!isLoggedIn) {
+      window.location.href = "/";
+      return;
+    }
+
+    const userData = localStorage.getItem("userData");
+    if (userData) {
+      try {
+        const parsedData = JSON.parse(userData);
+        setUserDetails(parsedData);
+        const resolvedName =
+          parsedData.name ||
+          (parsedData.firstName
+            ? `${parsedData.firstName} ${parsedData.lastName || ""}`.trim()
+            : "Candidate");
+        setName(resolvedName);
+        // Candidate is already registered in database; do not ask for details again!
+        setDetailsDone(true);
+      } catch (err) {
+        console.error("Error parsing user data", err);
+      }
+    }
+  }, []);
+
   const current = questions[index];
   const isLast = index === questions.length - 1;
-  const stepIndex = done ? 3 : interviewId ? 2 : detailsDone ? 1 : 0;
+  const stepIndex = done ? 2 : interviewId ? 1 : 0;
 
-  // move focus to the question heading on each new question (screen readers, keyboard users)
+  // move focus to the question heading on each new question
   useEffect(() => {
-    if (stepIndex === 2) headingRef.current?.focus();
+    if (stepIndex === 1) headingRef.current?.focus();
   }, [index, stepIndex]);
 
   // create the session once the microphone is verified, including device metadata
@@ -78,7 +116,12 @@ export default function InterviewPage() {
       const res = await fetch("/api/interview/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionName: name.trim(), device: getDeviceInfo(stream) }),
+        body: JSON.stringify({
+          sessionName: name.trim() || userDetails?.name || "Candidate",
+          userEmail: userDetails?.email || "",
+          candidateName: name.trim() || userDetails?.name || "",
+          device: getDeviceInfo(stream),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -154,41 +197,60 @@ export default function InterviewPage() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
+    <div className="flex h-screen overflow-hidden bg-white text-slate-900">
       <Sidebar
-        current={done ? 4 : stepIndex}
+        current={done ? 2 : stepIndex}
         name={name}
         refId={refId}
         micReady={!!stream}
         deviceLabel={stream?.getAudioTracks()[0]?.label ?? null}
+        userDetails={userDetails}
+        questionIndex={index}
+        totalQuestions={questions.length}
+        elapsed={elapsed}
+        interviewId={interviewId}
+        onOpenProfile={() => setUserModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-20 shrink-0 items-center justify-between border-b border-slate-200/50 bg-white/80 backdrop-blur-xl px-4 sm:px-8 transition-all duration-300">
+        <header className="flex h-20 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-8 transition-all duration-300">
           <div className="flex items-center gap-4">
-            <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/25">
+            <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25">
               <StepIcon size={24} />
             </div>
             <div>
-              <h1 className="font-display text-lg font-bold text-slate-900 sm:text-xl">{STEPS[stepIndex].label}</h1>
-              <p className="text-xs text-slate-500">Step {stepIndex + 1} of {STEPS.length}</p>
+              <h1 className="font-display text-lg font-bold text-slate-900 sm:text-xl">{STEPS[stepIndex]?.label || "Assessment"}</h1>
+              <p className="text-xs text-slate-500">Stage {stepIndex + 1} of {STEPS.length}</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
             {interviewId && (
-              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold tabular-nums text-slate-700 shadow-sm">
+              <div className="flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2 text-sm font-bold tabular-nums text-slate-700 shadow-sm">
                 <Clock size={16} className="text-blue-600" />
                 {fmtTime(elapsed)}
               </div>
             )}
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-sm font-bold text-white shadow-lg shadow-blue-500/25">
+            <button
+              onClick={handleLogout}
+              className="hidden sm:flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-800 shadow-sm transition-all duration-300 hover:bg-slate-100 hover:border-slate-300 cursor-pointer"
+              title="Logout"
+            >
+              <User size={16} />
+              <span>Logout</span>
+            </button>
+            <button
+              onClick={() => setUserModalOpen(true)}
+              className="flex size-11 items-center justify-center rounded-2xl bg-white text-blue-900 border-2 border-blue-300 text-sm font-black shadow-md transition-all duration-300 hover:scale-105 hover:bg-blue-50 cursor-pointer"
+              title="View your profile"
+            >
               {name.trim() ? name.trim()[0].toUpperCase() : "C"}
-            </div>
+            </button>
           </div>
         </header>
         
         <div className="h-1 bg-slate-200 lg:hidden">
-          <div className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-500" style={{ width: `${((stepIndex + 1) / 4) * 100}%` }} />
+          <div className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-500" style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }} />
         </div>
 
         {!online && (
@@ -199,76 +261,18 @@ export default function InterviewPage() {
 
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-7xl p-4 sm:p-8">
-            {/* Step 1: candidate details */}
+            {/* Stage 1: Audio & Microphone Calibration */}
             {stepIndex === 0 && (
-              <form
-                onSubmit={(e) => { e.preventDefault(); if (name.trim()) setDetailsDone(true); }}
-                className={`${card} fade-up mx-auto max-w-2xl overflow-hidden shadow-xl`}
-              >
-                <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 px-8 py-6">
-                  <div className="flex items-center gap-3">
-                    <div className="grid size-12 place-items-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/25">
-                      <User size={24} />
-                    </div>
-                    <div>
-                      <h2 className="font-display text-xl font-bold text-slate-900">Candidate Details</h2>
-                      <p className="text-sm text-slate-600">Your name is used as the session name for this assessment.</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-8">
-                  <label htmlFor="name" className="block text-sm font-semibold text-slate-700">Full Name</label>
-                  <input
-                    id="name"
-                    autoFocus
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter your full name"
-                    className={`${input} mt-2 text-base`}
-                  />
-                  <button type="submit" disabled={!name.trim()} className={`${btnPrimary} mt-6 w-full sm:w-auto px-8 py-3 text-base shadow-lg shadow-blue-500/25 hover:shadow-blue-500/30`}>
-                    Continue <ArrowRight size={18} />
-                  </button>
-                </div>
-                <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 px-8 py-6">
-                  <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                    <Info size={18} className="text-blue-600" /> Instructions
-                  </h3>
-                  <ul className="mt-3 space-y-2">
-                    {[
-                      "The assessment has 4 questions, answered by voice.",
-                      "Each answer can be up to 60 seconds. You may re-record before saving.",
-                      "Do not refresh or close the page until the assessment is complete.",
-                    ].map((item, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
-                        <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-600" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </form>
-            )}
-
-            {/* Step 2: system check */}
-            {stepIndex === 1 && (
               <div className="fade-up mx-auto max-w-xl">
-                <div className={`${card} p-8 shadow-xl`}>
+                <div className={`${card} p-8 sm:p-10 shadow-xl`}>
                   <MicPermission onGranted={setStream} onContinue={startInterview} continuing={busy} />
                   {error && <ErrorNote>{error}</ErrorNote>}
                 </div>
-                <button
-                  onClick={() => setDetailsDone(false)}
-                  disabled={busy}
-                  className="mt-6 flex items-center gap-2 text-sm font-semibold text-slate-600 transition-colors hover:text-slate-900"
-                >
-                  <ArrowRight size={16} className="rotate-180" /> Edit candidate details
-                </button>
               </div>
             )}
 
-            {/* Step 3: interview */}
-            {stepIndex === 2 && (
+            {/* Stage 2: Spoken Assessment */}
+            {stepIndex === 1 && (
               <div className="grid gap-8 xl:grid-cols-[1fr_350px]">
                 <section key={current.id} className={`${card} fade-up overflow-hidden shadow-xl`}>
                   <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 px-8 py-4">
@@ -439,6 +443,12 @@ export default function InterviewPage() {
       >
         You are about to save your last answer and finish the assessment. Answers cannot be changed after submission.
       </ConfirmDialog>
+
+      <UserDetailsModal
+        open={userModalOpen}
+        onClose={() => setUserModalOpen(false)}
+        userDetails={userDetails}
+      />
     </div>
   );
 }
