@@ -29,6 +29,7 @@ import {
   Award,
 } from "lucide-react";
 import UserDetailsModal, { UserDetails } from "@/components/UserDetailsModal";
+import Silk from "@/components/Silk";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"signin" | "register">("signin");
@@ -196,12 +197,14 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen w-full flex flex-col justify-between bg-white text-slate-900 selection:bg-blue-600 selection:text-white font-sans overflow-x-hidden">
-      {/* ================= FLOWING CYAN-BLUE & WHITE WAVE BACKGROUND ================= */}
+      {/* ================= SILK ANIMATED BACKGROUND ================= */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        {/* Full-bleed fluid cyan-blue & white silk wave background */}
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
-          style={{ backgroundImage: "url('/bg-wave.jpg')" }}
+        <Silk
+          speed={6.5}
+          scale={1.1}
+          color="#2878fa"
+          noiseIntensity={0.7}
+          rotation={0}
         />
         {/* Ultra-subtle overlay for optimal contrast and readability */}
         <div className="absolute inset-0 bg-white/15 backdrop-blur-[0.5px]" />
