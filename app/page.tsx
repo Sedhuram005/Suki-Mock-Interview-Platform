@@ -242,8 +242,8 @@ export default function Home() {
               href="/interview"
               className="flex items-center gap-1.5 text-blue-600 font-extrabold hover:text-blue-800 transition-colors py-1 border-b-2 border-blue-600"
             >
-              <Mic size={14} className="text-blue-600" />
-              <span>Voice Assessment</span>
+              <Sparkles size={14} className="text-blue-600" />
+              <span>Assessment</span>
             </Link>
             <button
               type="button"
@@ -371,8 +371,8 @@ export default function Home() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center gap-3 px-4 py-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 font-bold text-sm hover:bg-blue-100 transition-all cursor-pointer"
               >
-                <Mic size={20} className="text-blue-600" />
-                <span>Voice Assessment</span>
+                <Sparkles size={20} className="text-blue-600" />
+                <span>Assessment</span>
               </Link>
               <button
                 type="button"
@@ -560,8 +560,7 @@ export default function Home() {
                   href="/interview"
                   className="w-full py-4 text-base font-bold text-white rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl shadow-blue-600/30 flex items-center justify-center gap-2.5 mb-3.5 transition-all hover:scale-[1.01] active:scale-[0.99]"
                 >
-                  <Mic size={18} />
-                  <span>Launch Voice Interview Directly</span>
+                  <span>Launch Interview Directly</span>
                   <ArrowRight size={18} />
                 </Link>
 
@@ -1122,8 +1121,8 @@ export default function Home() {
                 href="/interview"
                 className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider px-5 py-2.5 shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
               >
-                <Mic size={14} />
-                <span>Start Voice Test</span>
+                <Sparkles size={14} />
+                <span>Start Assessment</span>
               </Link>
             </div>
           </div>
