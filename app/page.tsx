@@ -13,7 +13,6 @@ import {
   Sparkles,
   ClipboardList,
   CheckCircle2,
-  Mic,
   User,
   LogOut,
   Phone,
@@ -291,7 +290,6 @@ export default function Home() {
                 href="/interview"
                 className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer"
               >
-                <Mic size={14} />
                 <span>Launch Interview</span>
                 <ArrowRight size={13} />
               </Link>
@@ -320,7 +318,6 @@ export default function Home() {
                 href="/interview"
                 className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-[0.12em] shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer"
               >
-                <Mic size={14} />
                 <span>Start Interview</span>
                 <ArrowRight size={13} />
               </Link>
@@ -420,7 +417,6 @@ export default function Home() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 text-sm font-bold uppercase tracking-[0.12em] shadow-md shadow-blue-500/25 transition-all cursor-pointer"
                   >
-                    <Mic size={18} />
                     <span>Launch Interview</span>
                     <ArrowRight size={18} />
                   </Link>
@@ -448,7 +444,6 @@ export default function Home() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 text-sm font-bold uppercase tracking-[0.12em] shadow-md shadow-blue-500/25 transition-all cursor-pointer"
                   >
-                    <Mic size={18} />
                     <span>Start Interview</span>
                     <ArrowRight size={18} />
                   </Link>
@@ -1037,7 +1032,7 @@ export default function Home() {
                 href="/interview"
                 className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider px-5 py-2.5 shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
               >
-                <Mic size={14} />
+                <ClipboardList size={14} />
                 <span>Launch Assessment</span>
               </Link>
             </div>

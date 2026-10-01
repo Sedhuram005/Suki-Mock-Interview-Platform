@@ -7,7 +7,6 @@ import {
   CircleDashed,
   Loader2,
   LoaderCircle,
-  Mic,
   Video,
   XCircle,
 } from "lucide-react";
@@ -100,11 +99,8 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <span className="mx-auto grid size-14 place-items-center rounded-xl bg-blue-50 text-blue-800">
-          <span className="flex items-center gap-1.5">
-            <Mic size={24} aria-hidden="true" />
-            <Video size={24} aria-hidden="true" />
-          </span>
+        <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 shadow-sm">
+          <Video size={28} aria-hidden="true" />
         </span>
         <h2 className="mt-4 text-2xl font-semibold text-slate-900">Check your microphone & camera</h2>
         <p className="mt-2 text-sm text-slate-600">
