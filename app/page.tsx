@@ -196,255 +196,147 @@ export default function Home() {
       : "Candidate");
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col justify-between bg-white text-slate-900 selection:bg-blue-600 selection:text-white font-sans overflow-x-hidden">
+    <div className="relative min-h-screen w-full flex flex-col justify-between bg-slate-900 text-white selection:bg-purple-600 selection:text-white font-sans overflow-x-hidden">
       {/* ================= SILK ANIMATED BACKGROUND ================= */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <Silk
           speed={6.5}
           scale={1.1}
-          color="#2878fa"
+          color="#6366f1"
           noiseIntensity={0.7}
           rotation={0}
         />
-        {/* Ultra-subtle overlay for optimal contrast and readability */}
-        <div className="absolute inset-0 bg-white/15 backdrop-blur-[0.5px]" />
+        {/* Dark overlay for better contrast */}
+        <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-[0.5px]" />
       </div>
 
-      {/* ================= TOP NAVIGATION BAR (CLEAN WHITE & BLUE GLASS) ================= */}
-      <header className="relative z-20 w-full px-6 sm:px-12 lg:px-20 py-4 flex items-center justify-between border-b border-blue-100/60 bg-white/80 sticky top-0 backdrop-blur-md">
-        {/* Left: Hexagon Icon + Company Title */}
+      {/* ================= DEMO CONTENT TOGGLE ================= */}
+      <div className="fixed bottom-6 right-6 z-30 flex items-center gap-3 bg-white/10 border border-white/20 rounded-full px-4 py-2 backdrop-blur-sm">
+        <span className="text-sm font-semibold text-white/90">Demo Content</span>
+        <button
+          type="button"
+          className="relative inline-flex h-6 w-11 items-center rounded-full bg-white/20 transition-colors"
+        >
+          <span className="translate-x-1 inline-block h-4 w-4 transform rounded-full bg-white transition"></span>
+        </button>
+      </div>
+
+      {/* ================= TOP NAVIGATION BAR (FROSTED GLASS EFFECT) ================= */}
+      <header className="relative z-20 w-full px-6 sm:px-12 lg:px-20 py-4 flex items-center justify-between border-b border-white/10 bg-white/5 backdrop-blur-xl sticky top-0">
+        {/* Left: Logo */}
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative flex size-9 items-center justify-center rounded-xl bg-blue-50 border border-blue-200">
-            <Hexagon size={22} className="stroke-[2.4] text-blue-600 transition-transform group-hover:scale-110" />
-            <div className="absolute size-2 rounded-full bg-blue-600" />
+          <div className="relative flex size-10 items-center justify-center rounded-xl bg-white/10 border border-white/20 backdrop-blur-sm">
+            <Hexagon size={24} className="stroke-[2.4] text-white transition-transform group-hover:scale-110" />
+            <div className="absolute size-2 rounded-full bg-white" />
           </div>
-          <span className="font-display text-sm sm:text-base font-extrabold uppercase tracking-[0.25em] text-slate-900">
-            Talent<span className="text-blue-600">IQ</span>
+          <span className="font-display text-sm sm:text-base font-extrabold uppercase tracking-[0.25em] text-white">
+            Talent<span className="text-blue-300">IQ</span>
           </span>
         </Link>
 
-        {/* Center / Right Purpose-Built Platform Navigation */}
-        <div className="flex items-center gap-4 sm:gap-8">
-          <nav className="hidden lg:flex items-center gap-7 text-xs font-bold uppercase tracking-[0.15em] text-slate-600">
+        {/* Center Navigation */}
+        <nav className="hidden md:flex items-center gap-8">
+          <Link
+            href="/interview"
+            className="text-sm font-semibold text-white/80 hover:text-white transition-colors"
+          >
+            Features
+          </Link>
+          <button
+            type="button"
+            onClick={() => setTracksModalOpen(true)}
+            className="text-sm font-semibold text-white/80 hover:text-white transition-colors cursor-pointer"
+          >
+            About
+          </button>
+        </nav>
+
+        {/* Right: Sign up button */}
+        {isLoggedIn ? (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setUserModalOpen(true)}
+              className="hidden sm:flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/20 transition-all cursor-pointer backdrop-blur-sm"
+            >
+              <div className="size-6 rounded-full bg-white/20 text-white text-[11px] grid place-items-center font-bold">
+                {candidateDisplayName.charAt(0).toUpperCase()}
+              </div>
+              <span className="max-w-[120px] truncate">{candidateDisplayName}</span>
+            </button>
+
             <Link
               href="/interview"
-              className="flex items-center gap-1.5 text-blue-600 font-extrabold hover:text-blue-800 transition-colors py-1 border-b-2 border-blue-600"
+              className="rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-5 py-2.5 text-sm font-semibold shadow-lg shadow-purple-500/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
             >
-              <Mic size={14} className="text-blue-600" />
-              <span>Voice Assessment</span>
+              <Mic size={16} />
+              <span>Launch Interview</span>
             </Link>
+
             <button
               type="button"
-              onClick={() => setTracksModalOpen(true)}
-              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors cursor-pointer py-1"
+              onClick={handleLogout}
+              title="Sign out"
+              className="size-9 rounded-full border border-white/20 bg-white/10 hover:bg-white/20 grid place-items-center text-white transition-all cursor-pointer backdrop-blur-sm"
             >
-              <Layers size={14} className="text-blue-600" />
-              <span>Interview Tracks</span>
+              <LogOut size={16} />
             </button>
-            <button
-              type="button"
-              onClick={() => setScoringModalOpen(true)}
-              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors cursor-pointer py-1"
-            >
-              <BarChart3 size={14} className="text-blue-600" />
-              <span>AI Scoring Rubric</span>
-            </button>
-            {isLoggedIn && (
-              <button
-                type="button"
-                onClick={() => setUserModalOpen(true)}
-                className="flex items-center gap-1.5 hover:text-blue-600 transition-colors cursor-pointer py-1"
-              >
-                <User size={14} className="text-blue-600" />
-                <span>Candidate Dossier</span>
-              </button>
-            )}
-          </nav>
-
-          {/* Action CTAs: Start Interview & Auth Controls */}
-          {isLoggedIn ? (
-            <div className="flex items-center gap-2.5 sm:gap-3">
-              <button
-                type="button"
-                onClick={() => setUserModalOpen(true)}
-                className="hidden sm:flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/80 px-3.5 py-1.5 text-xs font-bold text-blue-900 hover:bg-blue-100 transition-all cursor-pointer shadow-sm"
-              >
-                <div className="size-5 rounded-full bg-blue-600 text-white text-[10px] grid place-items-center font-bold">
-                  {candidateDisplayName.charAt(0).toUpperCase()}
-                </div>
-                <span className="max-w-[120px] truncate">{candidateDisplayName}</span>
-              </button>
-
-              <Link
-                href="/interview"
-                className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-              >
-                <Mic size={14} />
-                <span>Launch Interview</span>
-                <ArrowRight size={13} />
-              </Link>
-
-              <button
-                type="button"
-                onClick={handleLogout}
-                title="Sign out"
-                className="size-9 rounded-full border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 grid place-items-center text-slate-500 transition-all cursor-pointer shadow-sm"
-              >
-                <LogOut size={14} />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2.5 sm:gap-3">
-              <button
-                type="button"
-                onClick={() => setActiveTab("register")}
-                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-slate-700 hover:text-blue-600 px-3 py-2 cursor-pointer transition-colors"
-              >
-                <Sparkles size={13} className="text-blue-600" />
-                <span>Register Profile</span>
-              </button>
-
-              <Link
-                href="/interview"
-                className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-[0.12em] shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-              >
-                <Mic size={14} />
-                <span>Start Interview</span>
-                <ArrowRight size={13} />
-              </Link>
-            </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setActiveTab("register")}
+            className="rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-6 py-2.5 text-sm font-semibold shadow-lg shadow-purple-500/30 transition-all hover:scale-105 cursor-pointer"
+          >
+            Sign up
+          </button>
+        )}
       </header>
 
-      {/* ================= MAIN CONTENT: LEFT INTRO / RIGHT WHITE & BLUE SIGN IN CARD ================= */}
-      <main className="relative z-10 flex-1 flex items-center px-6 sm:px-12 lg:px-20 py-10 lg:py-16">
-        <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          
-          {/* ================= LEFT SIDE: WELCOME & PLATFORM INTRO ================= */}
-          <div className="lg:col-span-6 space-y-7 lg:pr-6">
-            
-            {/* Headline */}
-            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.1]">
-              Welcome to <br />
-              <span className="text-blue-600">
-                TalentIQ Portal
+      {/* ================= MAIN CONTENT: HERO SECTION ================= */}
+      <main className="relative z-10 flex-1 flex items-center px-6 sm:px-12 lg:px-20 py-20 lg:py-32">
+        <div className="w-full max-w-7xl mx-auto">
+          {/* ================= HERO CONTENT ================= */}
+          <div className="max-w-3xl space-y-8">
+            {/* NEW Tag */}
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-2 backdrop-blur-sm">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
               </span>
+              <span className="text-sm font-semibold text-white/90">NEW Creative Components</span>
+            </div>
+
+            {/* Headline */}
+            <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.1]">
+              Silk touch is a good enhancement, Steve!
             </h1>
 
             {/* Intro Paragraph */}
-            <p className="text-base sm:text-lg text-slate-700 leading-relaxed font-normal max-w-xl">
-              TalentIQ is a comprehensive practice, assignment, and voice interview platform designed to help new graduates and candidates enhance their technical depth, master real-time spoken communication, and prepare for premier career opportunities.
+            <p className="text-lg sm:text-xl text-white/80 leading-relaxed font-normal max-w-2xl">
+              Experience the future of interview preparation with our AI-powered voice assessment platform. Elevate your communication skills and ace your next interview.
             </p>
 
-            {/* Direct Action Link - Solid Non-Transparent High-Impact Button */}
-            <div className="pt-2">
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Link
                 href="/interview"
-                className="inline-flex items-center gap-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-base px-8 py-4 shadow-xl shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] border-2 border-blue-600 cursor-pointer"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-white text-slate-900 font-bold text-base px-8 py-4 shadow-xl hover:scale-105 transition-all cursor-pointer"
               >
-                <Mic size={20} />
-                <span>Launch Voice Assessment</span>
-                <ArrowRight size={20} />
+                <span>Get started</span>
+                <ArrowRight size={18} />
               </Link>
+              <button
+                type="button"
+                onClick={() => setTracksModalOpen(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-base px-8 py-4 shadow-lg shadow-purple-500/30 hover:scale-105 transition-all cursor-pointer"
+              >
+                <span>Learn more</span>
+              </button>
             </div>
-
           </div>
-
-          {/* ================= RIGHT SIDE: WHITE AND BLUE AUTH CARD ================= */}
-          <div className="lg:col-span-6 w-full max-w-[540px] mx-auto lg:ml-auto">
-            {isLoggedIn && userData ? (
-              /* ================= LOGGED IN CANDIDATE DOSSIER CARD ================= */
-              <div className="rounded-[35px] border-2 border-blue-200 bg-white p-8 sm:p-10 shadow-2xl shadow-blue-950/10 text-slate-900">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-2 rounded-full bg-blue-600" />
-                    <h2 className="font-display text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                      Candidate Portal
-                    </h2>
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3.5 py-1.5 text-xs font-bold text-blue-700">
-                    <CheckCircle2 size={14} className="text-blue-600" /> Verified &amp; Synced
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-5 p-5 rounded-2xl bg-blue-50/80 border border-blue-200 mb-6">
-                  <div className="relative">
-                    <div className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-2xl shadow-md">
-                      {candidateDisplayName.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="absolute -bottom-1 -right-1 grid size-6 place-items-center rounded-full bg-blue-600 text-white ring-2 ring-white">
-                      <Check size={14} className="stroke-[3]" />
-                    </div>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-bold text-slate-900 text-lg truncate">
-                      {candidateDisplayName}
-                    </h3>
-                    <p className="text-sm text-blue-700 font-semibold truncate">
-                      {userData.profession || "Full Stack Candidate"}
-                    </p>
-                    <p className="text-xs text-slate-500 truncate mt-0.5">
-                      {userData.email}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-3 mb-6 text-sm text-slate-600">
-                  <div className="flex items-center justify-between py-2 border-b border-blue-50">
-                    <span className="font-medium text-slate-500 flex items-center gap-2">
-                      <Database size={15} className="text-blue-600" /> Database Registry:
-                    </span>
-                    <span className="font-bold text-blue-700">MongoDB Synchronized</span>
-                  </div>
-                  {userData.phone && (
-                    <div className="flex items-center justify-between py-2 border-b border-blue-50">
-                      <span className="font-medium text-slate-500 flex items-center gap-2">
-                        <Phone size={15} className="text-blue-600" /> Contact Phone:
-                      </span>
-                      <span className="font-bold text-slate-800">{userData.phone}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between py-2 border-b border-blue-50">
-                    <span className="font-medium text-slate-500 flex items-center gap-2">
-                      <GraduationCap size={15} className="text-blue-600" /> Education:
-                    </span>
-                    <span className="font-bold text-slate-800 truncate max-w-[220px]">
-                      {userData.education || "Bachelor's Degree"}
-                    </span>
-                  </div>
-                </div>
-
-                <Link
-                  href="/interview"
-                  className="w-full py-4 text-base font-bold text-white rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl shadow-blue-600/30 flex items-center justify-center gap-2.5 mb-3.5 transition-all hover:scale-[1.01] active:scale-[0.99]"
-                >
-                  <Mic size={18} />
-                  <span>Launch Voice Interview Directly</span>
-                  <ArrowRight size={18} />
-                </Link>
-
-                <button
-                  type="button"
-                  onClick={() => setUserModalOpen(true)}
-                  className="w-full py-3.5 text-sm font-bold text-slate-800 rounded-2xl border-2 border-slate-200 bg-white hover:bg-slate-50 shadow-sm flex items-center justify-center gap-2 cursor-pointer mb-3 transition-all"
-                >
-                  <User size={16} className="text-blue-600" />
-                  <span>View Complete Profile Dossier</span>
-                </button>
-
-                <div className="pt-2 text-center">
-                  <button
-                    onClick={handleLogout}
-                    className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:text-rose-600 hover:border-rose-200 shadow-sm transition-colors cursor-pointer"
-                  >
-                    Switch candidate or sign out
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* ================= TABBED AUTH & REGISTRATION CARD (WHITE AND BLUE) ================= */
-              <div className="rounded-[35px] border-2 border-blue-200 bg-white p-8 sm:p-10 shadow-2xl shadow-blue-950/10 text-slate-900">
+        </div>
+      </main>
                 {/* Segmented Tab Switcher (Solid Non-Transparent Buttons) */}
                 <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 border-2 border-blue-100 mb-7">
                   <button
