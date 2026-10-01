@@ -485,8 +485,7 @@ export default function Home() {
                 href="/interview"
                 className="inline-flex items-center gap-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-base px-8 py-4 shadow-xl shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] border-2 border-blue-600 cursor-pointer"
               >
-                <Mic size={20} />
-                <span>Launch Voice Assessment</span>
+                <span>Launch Assessment</span>
                 <ArrowRight size={20} />
               </Link>
             </div>
