@@ -108,9 +108,10 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
           {error && <p className="font-medium">{error}</p>}
           <p className={error ? "mt-2" : ""}>To allow microphone access:</p>
           <ol className="mt-1 list-decimal space-y-1 pl-5">
-            <li>Open this site&apos;s settings from the browser address bar.</li>
+            <li>Open this site&apos;s settings from the browser address bar (look for the lock icon).</li>
             <li>Set Microphone permission to Allow.</li>
             <li>Return here and choose Try again.</li>
+            <li>If that doesn't work, refresh the page and allow microphone access when prompted.</li>
           </ol>
         </div>
       )}

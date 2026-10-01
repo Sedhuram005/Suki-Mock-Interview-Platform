@@ -29,9 +29,10 @@ type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 type RecorderProps = {
   stream: MediaStream;
   onChange: (answer: AnswerData) => void;
+  onRefreshStream?: () => Promise<void>;
 };
 
-export default function Recorder({ stream, onChange }: RecorderProps) {
+export default function Recorder({ stream, onChange, onRefreshStream }: RecorderProps) {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const speechRef = useRef<SpeechRecognitionLike | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -118,7 +119,7 @@ export default function Recorder({ stream, onChange }: RecorderProps) {
     setRecording(false);
   };
 
-  const start = () => {
+  const start = async () => {
     setError("");
     setTranscriptionNotice("");
     setPlaying(false);
@@ -136,7 +137,19 @@ export default function Recorder({ stream, onChange }: RecorderProps) {
 
     const track = stream.getAudioTracks()[0];
     if (!track || track.readyState !== "live" || track.muted) {
-      setError("The microphone is not active. Reload the page and allow access again.");
+      // Automatically try to refresh the stream before giving up
+      if (onRefreshStream) {
+        try {
+          await onRefreshStream();
+          // After refresh, the parent will re-render with a new stream prop.
+          // Show a gentle message instead of a hard error.
+          setError("Microphone was reconnected. Please click the record button again.");
+        } catch {
+          setError("The microphone is not active. Please refresh the page and allow microphone access again, or check if another application is using your microphone.");
+        }
+      } else {
+        setError("The microphone is not active. Please refresh the page and allow microphone access again, or check if another application is using your microphone.");
+      }
       return;
     }
     if (typeof MediaRecorder === "undefined") {

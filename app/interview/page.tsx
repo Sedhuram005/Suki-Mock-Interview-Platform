@@ -42,6 +42,19 @@ export default function InterviewPage() {
 
   };
 
+  const refreshStream = async () => {
+    if (stream) {
+      stream.getTracks().forEach((t) => t.stop());
+    }
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setStream(newStream);
+      setError("");
+    } catch (e: any) {
+      setError("Could not refresh microphone access. Please reload the page and allow microphone access.");
+    }
+  };
+
   // release the microphone when leaving the page
   useEffect(() => () => stream?.getTracks().forEach((t) => t.stop()), [stream]);
 
@@ -295,6 +308,15 @@ export default function InterviewPage() {
                     </div>
                     <div className="mt-8">
                       <Recorder key={current.id} stream={stream!} onChange={setAnswer} />
+                      {error && error.includes("microphone") && (
+                        <button
+                          onClick={refreshStream}
+                          className="mt-4 flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                          <Mic size={16} />
+                          Refresh microphone access
+                        </button>
+                      )}
                     </div>
                     {error && <ErrorNote>{error}</ErrorNote>}
                   </div>
