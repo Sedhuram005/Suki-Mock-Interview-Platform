@@ -19,6 +19,7 @@
   --blue-950: #0f172a;
 }
 
+/* @theme is a Tailwind CSS v4 directive - CSS linter warning can be safely ignored */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -58,6 +59,19 @@ body {
 
 .animate-soundwave {
   animation: soundwave 1.1s ease-in-out infinite;
+}
+
+@keyframes wave-3d {
+  0% {
+    transform: perspective(1500px) rotateZ(-5deg) rotateY(-15deg) translateX(-20%) scale(1.3);
+  }
+  100% {
+    transform: perspective(1500px) rotateZ(5deg) rotateY(15deg) translateX(20%) scale(1.35);
+  }
+}
+
+.animate-wave-3d {
+  animation: wave-3d 12s linear infinite;
 }
 
 @keyframes pulse-soft {

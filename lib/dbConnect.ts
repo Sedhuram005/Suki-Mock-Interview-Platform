@@ -43,18 +43,20 @@ export async function withRetry<T>(
   attempts = 3,
   delayMs = 1500
 ): Promise<T> {
-  let lastError: any;
+  let lastError: unknown;
   for (let i = 0; i < attempts; i++) {
     try {
       await dbConnect();
       return await fn();
-    } catch (err: any) {
+    } catch (err: unknown) {
       lastError = err;
+      const message = err instanceof Error ? err.message : "";
       const isTransient =
-        err?.name === "MongooseServerSelectionError" ||
-        err?.message?.includes("Server selection timed out") ||
-        err?.message?.includes("ReplicaSetNoPrimary") ||
-        err?.message?.includes("ECONNRESET");
+        err instanceof Error &&
+        (err.name === "MongooseServerSelectionError" ||
+          message.includes("Server selection timed out") ||
+          message.includes("ReplicaSetNoPrimary") ||
+          message.includes("ECONNRESET"));
       if (!isTransient || i === attempts - 1) throw err;
       // Reset cached connection so next attempt tries fresh
       cached.conn = null;

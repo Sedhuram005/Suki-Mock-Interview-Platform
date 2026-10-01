@@ -1,29 +1,40 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Clock, Download, Info, Loader2, Timer, WifiOff, Mic, User, ShieldCheck, ClipboardList, Flag } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, CheckCircle2, Clock, Download, Info, Loader2, Timer, WifiOff, Mic, User, Video } from "lucide-react";
 import { questions } from "@/lib/questions";
-import { blobToBase64 } from "@/lib/blobToBase64";
 import { getDeviceInfo } from "@/lib/deviceInfo";
-import { btnPrimary, btnSecondary, card, input } from "@/lib/ui";
+import { btnPrimary, btnSecondary, card } from "@/lib/ui";
 import MicPermission from "@/components/MicPermission";
 import Recorder, { type AnswerData } from "@/components/Recorder";
 import Sidebar, { STEPS } from "@/components/Sidebar";
 import ErrorNote from "@/components/ErrorNote";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import UserDetailsModal from "@/components/UserDetailsModal";
+import UserDetailsModal, { type UserDetails } from "@/components/UserDetailsModal";
 
 const fmtTime = (s: number) =>
   `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
+type InterviewAnswerResult = {
+  questionId: number;
+  questionText: string;
+  englishText?: string;
+  language?: string;
+  confidence?: number | null;
+  needsReview?: boolean;
+  translationStatus?: "pending" | "done" | "failed";
+  videoUrl?: string | null;
+};
+
 export default function InterviewPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
-  const [detailsDone, setDetailsDone] = useState(false);
   const [interviewId, setInterviewId] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [index, setIndex] = useState(0);
-  const [answer, setAnswer] = useState<AnswerData>({ blob: null, transcript: "" });
-  const [submitted, setSubmitted] = useState<{ q: string; t: string }[]>([]);
+  const [answer, setAnswer] = useState<AnswerData>({ blob: null, videoBlob: null });
+  const [results, setResults] = useState<InterviewAnswerResult[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
@@ -31,32 +42,114 @@ export default function InterviewPage() {
   const [elapsed, setElapsed] = useState(0);
   const [online, setOnline] = useState(true);
   const [userModalOpen, setUserModalOpen] = useState(false);
-  const [userDetails, setUserDetails] = useState<any>(null);
+  const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(stream);
+
+  useEffect(() => {
+    streamRef.current = stream;
+  }, [stream]);
+
+  useEffect(() => {
+    if (cameraVideoRef.current) cameraVideoRef.current.srcObject = stream;
+  }, [stream, interviewId, index]);
+
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("userData");
     localStorage.removeItem("userEmail");
-    window.location.href = "/";
-
+    router.push("/");
   };
 
-  const refreshStream = async () => {
-    if (stream) {
-      stream.getTracks().forEach((t) => t.stop());
-    }
+  const refreshStream = async (deviceId?: string) => {
+    let freshAudioStream: MediaStream | null = null;
+    let freshVideoStream: MediaStream | null = null;
     try {
-      const newStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const currentStream = streamRef.current;
+      freshAudioStream = await navigator.mediaDevices.getUserMedia({
+        audio: deviceId && deviceId !== "default" ? { deviceId: { exact: deviceId } } : true,
+      });
+      let videoTracks = currentStream?.getVideoTracks().filter((track) => track.readyState === "live") ?? [];
+      if (videoTracks.length === 0) {
+        freshVideoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        videoTracks = freshVideoStream.getVideoTracks();
+      }
+      const newStream = new MediaStream([...(freshAudioStream?.getAudioTracks() ?? []), ...videoTracks]);
+      currentStream?.getAudioTracks().forEach((track) => track.stop());
+      currentStream?.getVideoTracks().filter((track) => !videoTracks.includes(track)).forEach((track) => track.stop());
+      streamRef.current = newStream;
       setStream(newStream);
       setError("");
-    } catch (e: any) {
-      setError("Could not refresh microphone access. Please reload the page and allow microphone access.");
+      return newStream;
+    } catch {
+      freshAudioStream?.getTracks().forEach((track) => track.stop());
+      freshVideoStream?.getTracks().forEach((track) => track.stop());
+      setError("Could not refresh microphone or camera access. Check browser permissions and try again.");
+      return null;
     }
   };
 
-  // release the microphone when leaving the page
-  useEffect(() => () => stream?.getTracks().forEach((t) => t.stop()), [stream]);
+  const refreshCameraStream = async (deviceId?: string) => {
+    let freshCameraStream: MediaStream | null = null;
+    let freshAudioStream: MediaStream | null = null;
+    try {
+      const currentStream = streamRef.current;
+      freshCameraStream = await navigator.mediaDevices.getUserMedia({
+        video: deviceId && deviceId !== "default" ? { deviceId: { exact: deviceId } } : true,
+      });
+      let audioTracks = currentStream?.getAudioTracks().filter((track) => track.readyState === "live") ?? [];
+      if (audioTracks.length === 0) {
+        freshAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioTracks = freshAudioStream.getAudioTracks();
+      }
+      const nextStream = new MediaStream([...audioTracks, ...freshCameraStream.getVideoTracks()]);
+      currentStream?.getVideoTracks().forEach((track) => track.stop());
+      if (freshAudioStream) currentStream?.getAudioTracks().forEach((track) => track.stop());
+      streamRef.current = nextStream;
+      setStream(nextStream);
+      setError("");
+      return nextStream;
+    } catch {
+      freshCameraStream?.getTracks().forEach((track) => track.stop());
+      freshAudioStream?.getTracks().forEach((track) => track.stop());
+      setError("Could not refresh camera access. Check Chrome's camera settings and try again.");
+      return null;
+    }
+  };
+
+  // Monitor the mic track — if the browser silently kills it, auto-refresh
+  useEffect(() => {
+    if (!stream) return;
+    const track = stream.getAudioTracks()[0];
+    if (!track) return;
+
+    const handleTrackEnd = async () => {
+      console.warn("[MicMonitor] Audio track ended, attempting auto-refresh...");
+      try {
+        const freshAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const videoTracks = streamRef.current?.getVideoTracks().filter((videoTrack) => videoTrack.readyState === "live") ?? [];
+        const newStream = new MediaStream([...freshAudioStream.getAudioTracks(), ...videoTracks]);
+        streamRef.current?.getAudioTracks().forEach((audioTrack) => audioTrack.stop());
+        streamRef.current = newStream;
+        setStream(newStream);
+        setError("");
+      } catch {
+        setError("Microphone disconnected. Please click 'Enable microphone' to reconnect.");
+      }
+    };
+
+    track.addEventListener("ended", handleTrackEnd);
+    return () => {
+      track.removeEventListener("ended", handleTrackEnd);
+      // Keep the microphone alive across interview stages; stop it only when the
+      // interview ends or the whole page unmounts.
+    };
+  }, [stream]);
 
   // session timer
   useEffect(() => {
@@ -78,38 +171,44 @@ export default function InterviewPage() {
   useEffect(() => {
     const up = () => setOnline(true);
     const down = () => setOnline(false);
-    setOnline(navigator.onLine);
+    const timeout = window.setTimeout(() => setOnline(navigator.onLine), 0);
     window.addEventListener("online", up);
     window.addEventListener("offline", down);
-    return () => { window.removeEventListener("online", up); window.removeEventListener("offline", down); };
+    return () => {
+      window.clearTimeout(timeout);
+      window.removeEventListener("online", up);
+      window.removeEventListener("offline", down);
+    };
   }, []);
 
   // load user details from localStorage and check authentication
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-    if (!isLoggedIn) {
-      window.location.href = "/";
-      return;
-    }
-
-    const userData = localStorage.getItem("userData");
-    if (userData) {
-      try {
-        const parsedData = JSON.parse(userData);
-        setUserDetails(parsedData);
-        const resolvedName =
-          parsedData.name ||
-          (parsedData.firstName
-            ? `${parsedData.firstName} ${parsedData.lastName || ""}`.trim()
-            : "Candidate");
-        setName(resolvedName);
-        // Candidate is already registered in database; do not ask for details again!
-        setDetailsDone(true);
-      } catch (err) {
-        console.error("Error parsing user data", err);
+    const timeout = window.setTimeout(() => {
+      const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+      if (!isLoggedIn) {
+        router.replace("/");
+        return;
       }
-    }
-  }, []);
+
+      const userData = localStorage.getItem("userData");
+      if (userData) {
+        try {
+          const parsedData = JSON.parse(userData) as UserDetails;
+          setUserDetails(parsedData);
+          const resolvedName =
+            parsedData.name ||
+            (parsedData.firstName
+              ? `${parsedData.firstName} ${parsedData.lastName || ""}`.trim()
+              : "Candidate");
+          setName(resolvedName);
+        } catch (err) {
+          console.error("Error parsing user data", err);
+        }
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [router]);
 
   const current = questions[index];
   const isLast = index === questions.length - 1;
@@ -121,11 +220,44 @@ export default function InterviewPage() {
   }, [index, stepIndex]);
 
   // create the session once the microphone is verified, including device metadata
+  const ensureLiveStream = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("This browser cannot access the microphone or camera.");
+    }
+
+    const currentStream = streamRef.current;
+    const audioTracks = currentStream?.getAudioTracks().filter((track) => track.readyState === "live") ?? [];
+    const videoTracks = currentStream?.getVideoTracks().filter((track) => track.readyState === "live") ?? [];
+    if (audioTracks.length > 0 && videoTracks.length > 0) return currentStream!;
+
+    let freshAudioStream: MediaStream | null = null;
+    let freshVideoStream: MediaStream | null = null;
+    try {
+      freshAudioStream = audioTracks.length > 0
+        ? null
+        : await navigator.mediaDevices.getUserMedia({ audio: true });
+      freshVideoStream = videoTracks.length > 0
+        ? null
+        : await navigator.mediaDevices.getUserMedia({ video: true });
+      const nextAudioTracks = freshAudioStream?.getAudioTracks() ?? audioTracks;
+      const nextVideoTracks = freshVideoStream?.getVideoTracks() ?? videoTracks;
+      const nextStream = new MediaStream([...nextAudioTracks, ...nextVideoTracks]);
+      currentStream?.getTracks().filter((track) => !nextStream.getTracks().includes(track)).forEach((track) => track.stop());
+      streamRef.current = nextStream;
+      setStream(nextStream);
+      return nextStream;
+    } catch (caught) {
+      freshAudioStream?.getTracks().forEach((track) => track.stop());
+      freshVideoStream?.getTracks().forEach((track) => track.stop());
+      throw caught;
+    }
+  };
+
   const startInterview = async () => {
-    if (!stream) return;
     setBusy(true);
     setError("");
     try {
+      const activeStream = await ensureLiveStream();
       const res = await fetch("/api/interview/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -133,50 +265,71 @@ export default function InterviewPage() {
           sessionName: name.trim() || userDetails?.name || "Candidate",
           userEmail: userDetails?.email || "",
           candidateName: name.trim() || userDetails?.name || "",
-          device: getDeviceInfo(stream),
+          device: getDeviceInfo(activeStream),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setInterviewId(data.interviewId);
-    } catch (e: any) {
-      setError(e.message || "Could not start the interview. Please try again.");
+    } catch (caught: unknown) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not start the interview. Please try again.",
+      );
     } finally {
       setBusy(false);
     }
   };
 
   const next = async () => {
-    const { blob, transcript } = answer;
-    if (!blob || !interviewId) return;
+    const { blob, videoBlob } = answer;
+    if (!blob || !videoBlob || !interviewId) return;
     setBusy(true);
     setError("");
     try {
+      const form = new FormData();
+      form.set("interviewId", interviewId);
+      form.set("questionId", String(current.id));
+      form.set("questionText", current.text);
+      form.set("audio", blob, `answer.${blob.type.includes("mp4") ? "m4a" : "webm"}`);
+      form.set("video", videoBlob, `answer-video.${videoBlob.type.includes("mp4") ? "mp4" : "webm"}`);
+      form.set("audioMimeType", blob.type || "audio/webm");
+      form.set("videoMimeType", videoBlob.type || "video/webm");
+      form.set("isLast", String(isLast));
       const res = await fetch("/api/interview/submit-answer", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          interviewId,
-          questionId: current.id,
-          questionText: current.text,
-          audioBase64: await blobToBase64(blob),
-          transcript,
-          mimeType: blob.type,
-          isLast,
-        }),
+        body: form,
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setSubmitted((s) => [...s, { q: current.text, t: transcript }]);
-      setAnswer({ blob: null, transcript: "" });
+      setAnswer({ blob: null, videoBlob: null });
       if (isLast) {
         stream?.getTracks().forEach((t) => t.stop());
+        try {
+          const resultsResponse = await fetch(`/api/interview/results?interviewId=${encodeURIComponent(interviewId)}`);
+          const resultsData = await resultsResponse.json();
+          if (!resultsResponse.ok) throw new Error(resultsData.error || "Could not load English results.");
+          const translatedAnswers: InterviewAnswerResult[] = Array.isArray(resultsData.answers)
+            ? resultsData.answers
+            : [];
+          setResults(translatedAnswers);
+          if (translatedAnswers.some((item) => item.translationStatus !== "done")) {
+            setError("Your audio and video were saved, but some English translations could not be generated. They can be retried later.");
+          }
+        } catch {
+          setError("Your audio and video were saved, but English results could not be loaded. Retry them from the results endpoint later.");
+        }
         setDone(true);
       } else {
         setIndex((i) => i + 1);
       }
-    } catch (e: any) {
-      setError(e.message || "Saving failed. Your recording is kept, please try again.");
+    } catch (caught: unknown) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Saving failed. Your recording is kept, please try again.",
+      );
     } finally {
       setBusy(false);
       setConfirmOpen(false);
@@ -184,8 +337,8 @@ export default function InterviewPage() {
   };
 
   const restart = () => {
-    setName(""); setDetailsDone(false); setInterviewId(null); setStream(null);
-    setIndex(0); setAnswer({ blob: null, transcript: "" }); setSubmitted([]);
+    setName(""); setInterviewId(null); setStream(null);
+    setIndex(0); setAnswer({ blob: null, videoBlob: null }); setResults([]);
     setError(""); setDone(false); setElapsed(0);
   };
 
@@ -199,7 +352,15 @@ export default function InterviewPage() {
       `Reference ID: ${refId}`,
       `Time taken: ${fmtTime(elapsed)}`,
       "",
-      ...submitted.flatMap((s, i) => [`Q${i + 1}. ${s.q}`, s.t.trim() || "(no transcript)", ""]),
+      ...results.flatMap((item, i) => [
+        `Q${i + 1}. ${item.questionText}`,
+        item.englishText?.trim() || "(English translation unavailable)",
+        item.language && !["en", "english"].includes(item.language.toLowerCase())
+          ? `Translated from ${item.language}`
+          : "",
+        item.needsReview ? "Needs review" : "",
+        "",
+      ]),
     ];
     const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/plain" }));
     const a = document.createElement("a");
@@ -214,14 +375,13 @@ export default function InterviewPage() {
       <Sidebar
         current={done ? 2 : stepIndex}
         name={name}
-        refId={refId}
-        micReady={!!stream}
-        deviceLabel={stream?.getAudioTracks()[0]?.label ?? null}
+        micReady={!!stream?.getAudioTracks().some((track) => track.readyState === "live")}
+        cameraReady={!!stream?.getVideoTracks().some((track) => track.readyState === "live")}
+        cameraLabel={stream?.getVideoTracks()[0]?.label ?? null}
         userDetails={userDetails}
         questionIndex={index}
         totalQuestions={questions.length}
         elapsed={elapsed}
-        interviewId={interviewId}
         onOpenProfile={() => setUserModalOpen(true)}
         onLogout={handleLogout}
       />
@@ -233,7 +393,7 @@ export default function InterviewPage() {
               <StepIcon size={24} />
             </div>
             <div>
-              <h1 className="font-display text-lg font-bold text-slate-900 sm:text-xl">{STEPS[stepIndex]?.label || "Assessment"}</h1>
+              <h1 className="font-display text-lg font-bold text-slate-900 sm:text-xl">{STEPS[stepIndex]?.fullLabel || "Assessment"}</h1>
               <p className="text-xs text-slate-500">Stage {stepIndex + 1} of {STEPS.length}</p>
             </div>
           </div>
@@ -274,7 +434,7 @@ export default function InterviewPage() {
 
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-7xl p-4 sm:p-8">
-            {/* Stage 1: Audio & Microphone Calibration */}
+            {/* Stage 1: Audio and video calibration */}
             {stepIndex === 0 && (
               <div className="fade-up mx-auto max-w-xl">
                 <div className={`${card} p-8 sm:p-10 shadow-xl`}>
@@ -284,7 +444,7 @@ export default function InterviewPage() {
               </div>
             )}
 
-            {/* Stage 2: Spoken Assessment */}
+            {/* Stage 2: Audio and video assessment */}
             {stepIndex === 1 && (
               <div className="grid gap-8 xl:grid-cols-[1fr_350px]">
                 <section key={current.id} className={`${card} fade-up overflow-hidden shadow-xl`}>
@@ -306,15 +466,45 @@ export default function InterviewPage() {
                       <Timer size={18} className="text-blue-600" />
                       Suggested answer time: 30 to 60 seconds
                     </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                      <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-800">Any language</span>
+                      <span>Speak in any language. Your answers are converted to English.</span>
+                    </div>
+                    <div className="mx-auto mt-6 w-full max-w-4xl">
+                      <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-slate-300 bg-slate-950 shadow-lg">
+                        <video
+                          ref={cameraVideoRef}
+                          autoPlay
+                          muted
+                          playsInline
+                          aria-label="Live video assessment preview"
+                          className="h-full w-full -scale-x-100 object-cover"
+                        />
+                        <span className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-white">
+                          <Video size={14} /> Camera on
+                        </span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-slate-600">
+                        <span className="inline-flex items-center gap-1.5"><Video size={14} /> Camera: {stream?.getVideoTracks()[0]?.label || "Default camera"}</span>
+                        <span className="inline-flex items-center gap-1.5"><Mic size={14} /> Microphone: {stream?.getAudioTracks()[0]?.label || "Default microphone"}</span>
+                      </div>
+                    </div>
                     <div className="mt-8">
-                      <Recorder key={current.id} stream={stream!} onChange={setAnswer} />
-                      {error && error.includes("microphone") && (
+                      <Recorder
+                        key={current.id}
+                        stream={stream!}
+                        onChange={setAnswer}
+                        onRefreshStream={refreshStream}
+                        onRefreshCamera={refreshCameraStream}
+                      />
+                      {error && (error.includes("microphone") || error.includes("camera")) && (
                         <button
-                          onClick={refreshStream}
+                          onClick={() => void refreshStream()}
                           className="mt-4 flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
                         >
                           <Mic size={16} />
-                          Refresh microphone access
+                          <Video size={16} />
+                          Refresh audio and camera access
                         </button>
                       )}
                     </div>
@@ -382,7 +572,7 @@ export default function InterviewPage() {
                     <ul className="mt-3 space-y-2">
                       {[
                         "Speak clearly at a steady pace.",
-                        "Check the transcript and fix any mistakes.",
+                        "Your audio is translated into English, and the video is saved with the answer.",
                         "Answers cannot be changed after saving.",
                       ].map((item, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-blue-900/80">
@@ -422,6 +612,7 @@ export default function InterviewPage() {
                   ))}
                 </dl>
                 <div className="p-8">
+                  {error && <ErrorNote>{error}</ErrorNote>}
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="font-display text-xl font-bold text-slate-900">Your Responses</h3>
                     <button onClick={downloadTranscript} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-300 hover:shadow-blue-500/30 hover:scale-105">
@@ -429,18 +620,37 @@ export default function InterviewPage() {
                     </button>
                   </div>
                   <ul className="space-y-4">
-                    {submitted.map((s, i) => (
-                      <li key={i} className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-6 shadow-sm transition-all duration-300 hover:shadow-md">
+                    {results.map((item, i) => (
+                      <li key={item.questionId} className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-6 shadow-sm transition-all duration-300 hover:shadow-md">
                         <div className="flex items-center gap-2 mb-3">
                           <div className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 text-white text-sm font-bold">
                             {i + 1}
                           </div>
                           <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Question {i + 1}</p>
                         </div>
-                        <p className="text-base font-semibold text-slate-900 mb-2">{s.q}</p>
-                        <p className="text-sm leading-relaxed text-slate-600">
-                          {s.t.trim() || <span className="italic text-slate-400">No transcript</span>}
-                        </p>
+                        <p className="text-base font-semibold text-slate-900 mb-2">{item.questionText}</p>
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                          {item.language && !["en", "english"].includes(item.language.toLowerCase()) && (
+                            <span className="text-xs text-slate-600">Translated from {item.language}</span>
+                          )}
+                          {item.needsReview && (
+                            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900">Needs review</span>
+                          )}
+                        </div>
+                        {item.translationStatus === "done" && item.englishText ? (
+                          <p className="text-sm leading-relaxed text-slate-700">{item.englishText}</p>
+                        ) : (
+                          <p role="status" className="text-sm text-amber-800">English translation unavailable. The audio and video are saved and can be retried later.</p>
+                        )}
+                        {item.videoUrl && (
+                          <video
+                            className="mt-4 aspect-video w-full rounded-lg bg-black object-contain"
+                            src={item.videoUrl}
+                            controls
+                            playsInline
+                            aria-label={`Recorded video for question ${i + 1}`}
+                          />
+                        )}
                       </li>
                     ))}
                   </ul>

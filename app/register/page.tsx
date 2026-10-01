@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   ShieldCheck,
@@ -58,6 +59,7 @@ const SUGGESTED_SKILLS = [
 ];
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -208,10 +210,14 @@ export default function RegisterPage() {
       localStorage.setItem("isLoggedIn", "true");
 
       // Redirect directly to the home page with all details loaded
-      window.location.href = "/";
-    } catch (err: any) {
+      router.push("/");
+    } catch (err: unknown) {
       console.error("Registration error:", err);
-      setError(err.message || "Failed to complete registration. Please try again.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to complete registration. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -512,7 +518,7 @@ export default function RegisterPage() {
                     Account Security &amp; Password
                   </h2>
                   <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                    Set a strong password to protect your candidate assessment records and voice transcripts.
+                    Set a strong password to protect your candidate assessment records, audio, and video.
                   </p>
                 </div>
 

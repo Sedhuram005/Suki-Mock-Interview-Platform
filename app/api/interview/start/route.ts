@@ -17,6 +17,10 @@ export async function POST(req: Request) {
             sampleRate: Number.isFinite(device.sampleRate) ? device.sampleRate : undefined,
             channelCount: Number.isFinite(device.channelCount) ? device.channelCount : undefined,
             echoCancellation: typeof device.echoCancellation === "boolean" ? device.echoCancellation : undefined,
+            cameraLabel: String(device.cameraLabel ?? "").slice(0, 200),
+            cameraWidth: Number.isFinite(device.cameraWidth) ? device.cameraWidth : undefined,
+            cameraHeight: Number.isFinite(device.cameraHeight) ? device.cameraHeight : undefined,
+            cameraFrameRate: Number.isFinite(device.cameraFrameRate) ? device.cameraFrameRate : undefined,
             userAgent: String(device.userAgent ?? "").slice(0, 300),
           }
         : undefined;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -8,6 +8,7 @@ import {
   Loader2,
   LoaderCircle,
   Mic,
+  Video,
   XCircle,
 } from "lucide-react";
 import { btnPrimary } from "@/lib/ui";
@@ -27,6 +28,14 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [stream]);
 
   useEffect(() => {
     let permission: PermissionStatus | undefined;
@@ -56,7 +65,7 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
   const requestMic = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setStatus("denied");
-      setError("This browser cannot access a microphone. Try a current browser over HTTPS or localhost.");
+      setError("This browser cannot access media devices. Try a current browser over HTTPS or localhost.");
       return;
     }
 
@@ -64,19 +73,24 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
     setError("");
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const nextStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
       setStatus("granted");
-      setStream(stream);
-      onGranted(stream);
+      setStream((current) => {
+        current?.getTracks().forEach((track) => track.stop());
+        return nextStream;
+      });
+      onGranted(nextStream);
     } catch (caught) {
+      const previousStream = stream;
+      previousStream?.getTracks().forEach((track) => track.stop());
       setStatus("denied");
       const errorName = caught instanceof DOMException ? caught.name : "";
       setError(
         errorName === "NotFoundError"
-          ? "No microphone was found. Connect one and try again."
+          ? "No microphone or camera was found. Connect them and try again."
           : errorName === "NotReadableError"
-            ? "The microphone is busy in another app. Close it there, then try again."
-            : "Microphone access was blocked. Update this site's microphone permission, then try again.",
+            ? "The microphone or camera is busy in another app. Close it there, then try again."
+            : "The microphone or camera is not active. Reload the page and allow access again.",
       );
     }
   };
@@ -87,16 +101,19 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
     <div className="space-y-6">
       <div className="text-center">
         <span className="mx-auto grid size-14 place-items-center rounded-xl bg-blue-50 text-blue-800">
-          <Mic size={27} aria-hidden="true" />
+          <span className="flex items-center gap-1.5">
+            <Mic size={24} aria-hidden="true" />
+            <Video size={24} aria-hidden="true" />
+          </span>
         </span>
-        <h2 className="mt-4 text-2xl font-semibold text-slate-900">Check your microphone</h2>
+        <h2 className="mt-4 text-2xl font-semibold text-slate-900">Check your microphone & camera</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Allow microphone access to record your answers.
+          Allow microphone and camera access to record your video interview.
         </p>
       </div>
 
       <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-        <span className="text-sm font-medium text-slate-700">Permission status</span>
+        <span className="text-sm font-medium text-slate-700">Audio &amp; camera status</span>
         <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${classes}`}>
           <Icon size={14} className={status === "pending" ? "animate-spin" : ""} aria-hidden="true" />
           {label}
@@ -106,18 +123,36 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
       {status === "denied" && (
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           {error && <p className="font-medium">{error}</p>}
-          <p className={error ? "mt-2" : ""}>To allow microphone access:</p>
+          <p className={error ? "mt-2" : ""}>To allow microphone and camera access:</p>
           <ol className="mt-1 list-decimal space-y-1 pl-5">
             <li>Open this site&apos;s settings from the browser address bar (look for the lock icon).</li>
-            <li>Set Microphone permission to Allow.</li>
+            <li>Set Microphone and Camera permissions to Allow.</li>
             <li>Return here and choose Try again.</li>
-            <li>If that doesn't work, refresh the page and allow microphone access when prompted.</li>
+            <li>If that doesn&apos;t work, refresh the page and allow microphone and camera access when prompted.</li>
           </ol>
         </div>
       )}
 
       {status === "granted" && stream && (
-        <p className="mt-1 text-xs text-slate-500">Device: {stream?.getAudioTracks()[0]?.label || "Default microphone"}</p>
+        <div className="space-y-3">
+          <div className="relative w-full aspect-video bg-slate-900 rounded-lg overflow-hidden">
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute bottom-2 left-2 flex items-center gap-2 bg-black/50 text-white px-2 py-1 rounded">
+              <Video size={16} />
+              <span className="text-xs">Camera Preview</span>
+            </div>
+          </div>
+          <p className="text-xs text-slate-500">
+            Microphone: {stream?.getAudioTracks()[0]?.label || "Default microphone"}<br />
+            Camera: {stream?.getVideoTracks()[0]?.label || "Default camera"}
+          </p>
+        </div>
       )}
 
       {status === "granted" ? (
@@ -140,7 +175,7 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
           ) : status === "denied" ? (
             "Try again"
           ) : (
-            "Enable microphone"
+            "Enable microphone & camera"
           )}
         </button>
       )}

@@ -2,40 +2,44 @@
 
 import {
   Check,
-  ClipboardList,
   Flag,
   Mic,
-  ShieldCheck,
+  Video,
   LogOut,
   ChevronRight,
   Home,
   Cpu,
   Radio,
   BadgeCheck,
-  Phone,
-  GraduationCap,
-  Database,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { type UserDetails } from "@/components/UserDetailsModal";
+
+function AudioVideoStageIcon({ size = 18, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      <Mic size={size} color={color} aria-hidden="true" />
+      <Video size={size} color={color} aria-hidden="true" />
+    </span>
+  );
+}
 
 export const STEPS = [
-  { fullLabel: "Audio & Microphone Check", icon: Mic },
-  { fullLabel: "Spoken Assessment", icon: ClipboardList },
+  { fullLabel: "Audio & Video Check", icon: AudioVideoStageIcon },
+  { fullLabel: "Audio & Video Assessment", icon: AudioVideoStageIcon },
   { fullLabel: "Results & Submission", icon: Flag },
 ];
 
 type Props = {
   current: number;
   name: string;
-  refId: string | null;
   micReady: boolean;
-  deviceLabel?: string | null;
-  userDetails?: any;
+  cameraReady?: boolean;
+  cameraLabel?: string | null;
+  userDetails?: UserDetails | null;
   questionIndex?: number;
   totalQuestions?: number;
   elapsed?: number;
-  interviewId?: string | null;
   onOpenProfile?: () => void;
   onLogout?: () => void;
 };
@@ -43,30 +47,17 @@ type Props = {
 export default function Sidebar({
   current,
   name,
-  refId,
   micReady,
+  cameraReady = false,
+  cameraLabel,
   userDetails,
   questionIndex = 0,
   totalQuestions = 4,
   elapsed = 0,
-  interviewId,
   onOpenProfile,
   onLogout,
 }: Props) {
-  const [profile, setProfile] = useState<any>(userDetails || null);
-  const [tick, setTick] = useState(elapsed);
-
-  useEffect(() => {
-    if (userDetails) { setProfile(userDetails); return; }
-    const raw = localStorage.getItem("userData");
-    if (raw) { try { setProfile(JSON.parse(raw)); } catch {} }
-  }, [userDetails]);
-
-  useEffect(() => { setTick(elapsed); }, [elapsed]);
-  useEffect(() => {
-    const id = setInterval(() => setTick((p) => p + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
+  const profile = userDetails;
 
   const displayName =
     profile?.name ||
@@ -76,8 +67,6 @@ export default function Sidebar({
 
   const role = profile?.profession || "Candidate";
   const emailVal = profile?.email || "";
-  const phoneVal = profile?.phone || "";
-  const eduVal = profile?.education || "";
   const initial = displayName.charAt(0).toUpperCase() || "C";
 
   const fmtTime = (s: number) =>
@@ -168,7 +157,7 @@ export default function Sidebar({
             <Radio size={14} className="text-emerald-400" />
             Session Time:
           </span>
-          <span className="text-[13px] font-bold text-white font-mono">{fmtTime(tick)}</span>
+          <span className="text-[13px] font-bold text-white font-mono">{fmtTime(elapsed)}</span>
         </div>
 
         {/* Mic Status */}
@@ -182,13 +171,23 @@ export default function Sidebar({
           </span>
         </div>
 
+        <div className="flex items-center justify-between gap-2 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+          <span className="flex items-center gap-2 text-[12px] text-blue-100 font-medium">
+            <Video size={14} className={cameraReady ? "text-emerald-400" : "text-blue-300"} />
+            Camera:
+          </span>
+          <span className={`max-w-[140px] truncate text-right text-[12px] font-bold ${cameraReady ? "text-emerald-400" : "text-blue-300"}`}>
+            {cameraReady ? cameraLabel || "Ready" : "Standby"}
+          </span>
+        </div>
+
         {/* AI Engine */}
         <div className="flex items-center justify-between py-3">
           <span className="flex items-center gap-2 text-[12px] text-blue-100 font-medium">
             <Cpu size={14} className="text-blue-300" />
-            AI Engine:
+            Speech input:
           </span>
-          <span className="text-[13px] font-bold text-white">Whisper · STAR</span>
+          <span className="text-[13px] font-bold text-white">Any language</span>
         </div>
       </div>
 

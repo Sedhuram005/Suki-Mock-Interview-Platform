@@ -96,10 +96,11 @@ export async function POST(req: Request) {
       message: "Candidate registered and stored in database successfully.",
       user: userResponse,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Registration error:", error);
+    const message = error instanceof Error ? error.message : "";
     return NextResponse.json(
-      { error: error.message || "Failed to register candidate in database." },
+      { error: message || "Failed to register candidate in database." },
       { status: 500 }
     );
   }

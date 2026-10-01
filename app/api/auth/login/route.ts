@@ -63,16 +63,18 @@ export async function POST(req: Request) {
       message: "Login successful.",
       user: userResponse,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Login error:", error);
+    const message = error instanceof Error ? error.message : "";
     const isConnectionError =
-      error?.name === "MongooseServerSelectionError" ||
-      error?.message?.includes("Server selection timed out");
+      error instanceof Error &&
+      (error.name === "MongooseServerSelectionError" ||
+        message.includes("Server selection timed out"));
     return NextResponse.json(
       {
         error: isConnectionError
           ? "Database temporarily unavailable. Please try again in a moment."
-          : error.message || "Failed to log in.",
+          : message || "Failed to log in.",
       },
       { status: 500 }
     );

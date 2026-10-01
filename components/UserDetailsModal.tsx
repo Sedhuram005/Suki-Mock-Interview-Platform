@@ -69,10 +69,17 @@ type Props = {
   userDetails: UserDetails | null;
 };
 
+type ProfileTab = "all" | "personal" | "professional" | "education";
+
+const PROFILE_TABS: { id: ProfileTab; label: string }[] = [
+  { id: "all", label: "Overview Dossier" },
+  { id: "personal", label: "Personal & Contact" },
+  { id: "professional", label: "Experience & Skills" },
+  { id: "education", label: "Academics & Social" },
+];
+
 export default function UserDetailsModal({ open, onClose, userDetails }: Props) {
-  const [activeTab, setActiveTab] = useState<"all" | "personal" | "professional" | "education">(
-    "all"
-  );
+  const [activeTab, setActiveTab] = useState<ProfileTab>("all");
   const [copiedEmail, setCopiedEmail] = useState(false);
 
   if (!open) return null;
@@ -166,15 +173,10 @@ export default function UserDetailsModal({ open, onClose, userDetails }: Props) 
 
         {/* Tab Switcher */}
         <div className="flex border-b border-blue-100 bg-blue-50/60 px-6 sm:px-8 py-2.5 gap-2 overflow-x-auto">
-          {[
-            { id: "all", label: "Overview Dossier" },
-            { id: "personal", label: "Personal & Contact" },
-            { id: "professional", label: "Experience & Skills" },
-            { id: "education", label: "Academics & Social" },
-          ].map((tab) => (
+          {PROFILE_TABS.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id)}
               className={`rounded-xl px-4 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                 activeTab === tab.id
                   ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
