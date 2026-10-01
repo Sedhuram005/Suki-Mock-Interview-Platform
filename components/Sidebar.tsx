@@ -5,6 +5,7 @@ import {
   Flag,
   Mic,
   Video,
+  Sparkles,
   LogOut,
   ChevronRight,
   Home,
@@ -15,18 +16,9 @@ import {
 import Link from "next/link";
 import { type UserDetails } from "@/components/UserDetailsModal";
 
-function AudioVideoStageIcon({ size = 18, color = "currentColor" }: { size?: number; color?: string }) {
-  return (
-    <span className="inline-flex items-center gap-0.5">
-      <Mic size={size} color={color} aria-hidden="true" />
-      <Video size={size} color={color} aria-hidden="true" />
-    </span>
-  );
-}
-
 export const STEPS = [
-  { fullLabel: "Audio & Video Check", icon: AudioVideoStageIcon },
-  { fullLabel: "Audio & Video Assessment", icon: AudioVideoStageIcon },
+  { fullLabel: "Audio & Video Check", icon: Video },
+  { fullLabel: "Interactive Assessment", icon: Sparkles },
   { fullLabel: "Results & Submission", icon: Flag },
 ];
 
