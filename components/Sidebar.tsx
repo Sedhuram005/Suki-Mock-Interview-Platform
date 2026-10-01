@@ -5,7 +5,7 @@ import {
   Flag,
   Mic,
   Video,
-  Sparkles,
+  ClipboardList,
   LogOut,
   ChevronRight,
   Home,
@@ -18,7 +18,7 @@ import { type UserDetails } from "@/components/UserDetailsModal";
 
 export const STEPS = [
   { fullLabel: "Audio & Video Check", icon: Video },
-  { fullLabel: "Interactive Assessment", icon: Sparkles },
+  { fullLabel: "Interactive Assessment", icon: ClipboardList },
   { fullLabel: "Results & Submission", icon: Flag },
 ];
 

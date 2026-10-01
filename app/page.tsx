@@ -11,6 +11,7 @@ import {
   EyeOff,
   AlertCircle,
   Sparkles,
+  ClipboardList,
   CheckCircle2,
   Mic,
   User,
@@ -241,7 +242,7 @@ export default function Home() {
               href="/interview"
               className="flex items-center gap-1.5 text-blue-600 font-extrabold hover:text-blue-800 transition-colors py-1 border-b-2 border-blue-600"
             >
-              <Sparkles size={14} className="text-blue-600" />
+              <ClipboardList size={14} className="text-blue-600" />
               <span>Assessment</span>
             </Link>
             <button
@@ -370,7 +371,7 @@ export default function Home() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center gap-3 px-4 py-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 font-bold text-sm hover:bg-blue-100 transition-all cursor-pointer"
               >
-                <Sparkles size={20} className="text-blue-600" />
+                <ClipboardList size={20} className="text-blue-600" />
                 <span>Assessment</span>
               </Link>
               <button
@@ -1114,7 +1115,7 @@ export default function Home() {
                 href="/interview"
                 className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider px-5 py-2.5 shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
               >
-                <Sparkles size={14} />
+                <ClipboardList size={14} />
                 <span>Start Assessment</span>
               </Link>
             </div>
