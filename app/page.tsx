@@ -13,7 +13,6 @@ import {
   Sparkles,
   CheckCircle2,
   Mic,
-  Database,
   User,
   LogOut,
   Phone,
@@ -532,12 +531,6 @@ export default function Home() {
                 </div>
 
                 <div className="space-y-3 mb-6 text-sm text-slate-600">
-                  <div className="flex items-center justify-between py-2 border-b border-blue-50">
-                    <span className="font-medium text-slate-500 flex items-center gap-2">
-                      <Database size={15} className="text-blue-600" /> Database Registry:
-                    </span>
-                    <span className="font-bold text-blue-700">MongoDB Synchronized</span>
-                  </div>
                   {userData.phone && (
                     <div className="flex items-center justify-between py-2 border-b border-blue-50">
                       <span className="font-medium text-slate-500 flex items-center gap-2">
