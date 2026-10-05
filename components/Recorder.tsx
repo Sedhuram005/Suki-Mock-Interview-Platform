@@ -354,7 +354,7 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
             value={selectedDeviceId}
             onChange={(event) => void changeInput(event.target.value)}
             disabled={recording}
-            className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+            className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/15 disabled:bg-slate-100"
           >
             {audioInputs.map((device, index) => (
               <option key={device.deviceId || device.label} value={device.deviceId || "default"}>
@@ -371,7 +371,7 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
             value={stream.getVideoTracks()[0]?.getSettings().deviceId || selectedCameraId}
             onChange={(event) => void changeCamera(event.target.value)}
             disabled={recording}
-            className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+            className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/15 disabled:bg-slate-100"
           >
             {videoInputs.map((device, index) => (
               <option key={device.deviceId || device.label} value={device.deviceId || "default"}>
@@ -382,7 +382,7 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
         </label>
       )}
       {!audioUrl && (
-        <div className="flex flex-col items-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center">
+        <div className="flex flex-col items-center rounded-2xl border border-slate-200 bg-white px-6 py-8 text-center">
           {recording ? (
             <>
               <div className="flex items-center gap-2 text-sm font-medium text-red-700">
@@ -412,7 +412,7 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
               <button
                 type="button"
                 onClick={stop}
-                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
               >
                 <Square size={14} fill="currentColor" aria-hidden="true" /> Stop recording
               </button>
@@ -424,7 +424,7 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
                 onClick={start}
                 aria-label="Start audio and video recording"
                 title="Start audio and video recording"
-                className="grid size-20 place-items-center rounded-full bg-blue-700 text-white shadow-md shadow-blue-200 transition hover:scale-105 hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-700"
+                className="grid size-20 place-items-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/30 transition hover:scale-105 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600"
               >
                 <Mic size={30} aria-hidden="true" />
               </button>
@@ -438,7 +438,7 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
       )}
 
       {audioUrl && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-5">
+        <div className="rounded-2xl border border-emerald-200 bg-white p-5">
           <p className="flex items-center gap-2 text-sm font-medium text-emerald-800">
             <CheckCircle2 size={16} aria-hidden="true" /> Audio and video recorded
           </p>
@@ -521,7 +521,7 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
 
       {error && <ErrorNote>{error}</ErrorNote>}
       {notice && (
-        <p role="status" className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+        <p role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
           {notice}
         </p>
       )}

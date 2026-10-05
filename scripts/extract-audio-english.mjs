@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import mongoose from 'mongoose';
+import { translateAudioToEnglish } from './local-whisper-client.mjs';
 
 const projectRoot = process.cwd();
 for (const fileName of ['.env.local', '.env']) {
@@ -21,6 +22,7 @@ for (const fileName of ['.env.local', '.env']) {
 }
 
 const uri = process.env.MONGODB_URI;
+const forceRetranslate = process.argv.includes('--retranslate');
 if (!uri) {
   console.error('MONGODB_URI is not defined. Add it to .env.local or .env');
   process.exit(1);
@@ -36,6 +38,34 @@ function csvValue(value) {
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+async function readAudioBytes(answer, audioBucket) {
+  if (answer.audioFileId) {
+    const fileId = new mongoose.Types.ObjectId(answer.audioFileId);
+    const file = await audioBucket.find({ _id: fileId }).next();
+    if (!file) throw new Error('Original audio is missing from GridFS.');
+    return new Promise((resolve, reject) => {
+      const chunks = [];
+      const stream = audioBucket.openDownloadStream(fileId);
+      stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+      stream.once('error', reject);
+      stream.once('end', () => resolve(Buffer.concat(chunks)));
+    });
+  }
+  if (answer.audioBase64) return Buffer.from(answer.audioBase64, 'base64');
+  return null;
+}
+
+function extensionFor(mimeType, fallback) {
+  const normalized = String(mimeType || '').split(';')[0].trim().toLowerCase();
+  const extensions = {
+    'audio/aac': 'aac', 'audio/flac': 'flac', 'audio/mp3': 'mp3', 'audio/mpeg': 'mp3',
+    'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/wav': 'wav', 'audio/webm': 'webm',
+    'audio/x-m4a': 'm4a', 'audio/x-wav': 'wav', 'video/mp4': 'mp4', 'video/ogg': 'ogv',
+    'video/quicktime': 'mov', 'video/webm': 'webm',
+  };
+  return extensions[normalized] || fallback;
+}
+
 async function main() {
   await mongoose.connect(uri, {
     bufferCommands: false,
@@ -48,6 +78,7 @@ async function main() {
   const db = mongoose.connection.db;
   if (!db) throw new Error('MongoDB connection is not ready.');
 
+  const audioBucket = new mongoose.mongo.GridFSBucket(db, { bucketName: 'interviewAudio' });
   const videoBucket = new mongoose.mongo.GridFSBucket(db, { bucketName: 'interviewVideos' });
   const interviews = await db.collection('interviews').find({}).sort({ _id: 1 }).toArray();
   const rows = [[
@@ -60,23 +91,50 @@ async function main() {
   let unavailableCount = 0;
 
   for (const interview of interviews) {
-    for (const answer of interview.answers ?? []) {
-      if (!answer.audioBase64) continue;
-      const audio = Buffer.from(answer.audioBase64, 'base64');
-      if (audio.length === 0) continue;
-
+    for (const [answerIndex, answer] of (interview.answers ?? []).entries()) {
       const interviewId = interview._id.toString();
       const questionId = String(answer.questionId ?? 'unknown');
+      let audio;
+      try {
+        audio = await readAudioBytes(answer, audioBucket);
+      } catch (error) {
+        console.error(`Audio extraction failed for interview ${interviewId}, question ${questionId}:`, error.message || error);
+        unavailableCount += 1;
+        continue;
+      }
+      if (!audio?.length) continue;
+
       const mimeType = answer.mimeType || 'audio/webm';
-      const extension = mimeType.includes('mp4') ? 'm4a' : 'webm';
+      const extension = extensionFor(mimeType, 'bin');
       const stem = `interview-${interviewId}-question-${questionId}`;
       const audioFile = `${stem}.audio.${extension}`;
       const videoMimeType = answer.videoMimeType || 'video/webm';
-      const videoExtension = videoMimeType.includes('mp4') ? 'mp4' : 'webm';
+      const videoExtension = extensionFor(videoMimeType, 'bin');
       let videoFile = '';
       const englishFile = `${stem}.english.txt`;
-      const englishText = String(answer.englishText ?? '').trim();
-      const translationStatus = answer.translationStatus || 'pending';
+      let englishText = String(answer.englishText ?? '').trim();
+      let translationStatus = answer.translationStatus || 'pending';
+      if (forceRetranslate || !englishText) {
+        try {
+          const translated = await translateAudioToEnglish(audio, mimeType);
+          englishText = translated.englishText;
+          translationStatus = 'done';
+          Object.assign(answer, translated, { translationStatus });
+          await db.collection('interviews').updateOne(
+            { _id: interview._id },
+            { $set: {
+              [`answers.${answerIndex}.englishText`]: englishText,
+              [`answers.${answerIndex}.language`]: translated.language,
+              [`answers.${answerIndex}.confidence`]: translated.confidence,
+              [`answers.${answerIndex}.needsReview`]: translated.needsReview,
+              [`answers.${answerIndex}.translationStatus`]: 'done',
+            } },
+          );
+        } catch (error) {
+          translationStatus = 'failed';
+          console.error(`Local translation failed for interview ${interviewId}, question ${questionId}:`, error.message || error);
+        }
+      }
       const hasEnglish = translationStatus === 'done' && englishText.length > 0;
 
       fs.writeFileSync(path.join(outputDir, audioFile), audio);
@@ -98,9 +156,7 @@ async function main() {
       }
       fs.writeFileSync(
         path.join(outputDir, englishFile),
-        hasEnglish
-          ? `${englishText}\n`
-          : `English translation unavailable.\nTranslation status: ${translationStatus}\n`,
+        hasEnglish ? `${englishText}\n` : '',
         'utf8',
       );
 

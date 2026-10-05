@@ -5,18 +5,17 @@ import {
   ArrowRight,
   CheckCircle2,
   CircleDashed,
-  Loader2,
-  LoaderCircle,
   Video,
   XCircle,
 } from "lucide-react";
 import { btnPrimary } from "@/lib/ui";
+import SukiLoadingMark from "@/components/SukiLoadingMark";
 
 type Status = "idle" | "pending" | "granted" | "denied";
 
 const STATUS_META = {
   idle: { label: "Not requested", classes: "bg-slate-100 text-slate-700", Icon: CircleDashed },
-  pending: { label: "Waiting for permission", classes: "bg-amber-50 text-amber-800", Icon: LoaderCircle },
+  pending: { label: "Waiting for permission", classes: "bg-amber-50 text-amber-800", Icon: CircleDashed },
   granted: { label: "Granted", classes: "bg-emerald-50 text-emerald-800", Icon: CheckCircle2 },
   denied: { label: "Denied", classes: "bg-red-50 text-red-800", Icon: XCircle },
 } satisfies Record<Status, { label: string; classes: string; Icon: typeof CircleDashed }>;
@@ -99,7 +98,7 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 shadow-sm">
+        <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-600/20">
           <Video size={28} aria-hidden="true" />
         </span>
         <h2 className="mt-4 text-2xl font-semibold text-slate-900">Check your microphone & camera</h2>
@@ -108,16 +107,16 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
         </p>
       </div>
 
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
         <span className="text-sm font-medium text-slate-700">Audio &amp; camera status</span>
         <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${classes}`}>
-          <Icon size={14} className={status === "pending" ? "animate-spin" : ""} aria-hidden="true" />
+          {status === "pending" ? <SukiLoadingMark size={14} /> : <Icon size={14} aria-hidden="true" />}
           {label}
         </span>
       </div>
 
       {status === "denied" && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           {error && <p className="font-medium">{error}</p>}
           <p className={error ? "mt-2" : ""}>To allow microphone and camera access:</p>
           <ol className="mt-1 list-decimal space-y-1 pl-5">
@@ -131,7 +130,7 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
 
       {status === "granted" && stream && (
         <div className="space-y-3">
-          <div className="relative w-full aspect-video bg-slate-900 rounded-lg overflow-hidden">
+          <div className="relative w-full aspect-video bg-slate-900 rounded-2xl overflow-hidden">
             <video
               ref={videoRef}
               autoPlay
@@ -154,7 +153,7 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
       {status === "granted" ? (
         <button onClick={onContinue} disabled={continuing} className={`${btnPrimary} w-full`}>
           {continuing ? (
-            <><Loader2 size={16} className="animate-spin" /> Starting session...</>
+            <><SukiLoadingMark size={16} /> Starting session...</>
           ) : (
             <>Continue to interview <ArrowRight size={16} /></>
           )}
@@ -167,7 +166,7 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
           className={`${btnPrimary} w-full`}
         >
           {status === "pending" ? (
-            <><LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> Waiting for permission...</>
+            <><SukiLoadingMark size={16} /> Waiting for permission...</>
           ) : status === "denied" ? (
             "Try again"
           ) : (

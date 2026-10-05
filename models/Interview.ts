@@ -4,7 +4,9 @@ const AnswerSchema = new Schema(
   {
     questionId: { type: Number, required: true },
     questionText: { type: String, required: true },
-    audioBase64: { type: String, required: true },
+    // audioBase64 is kept optional to read interviews saved before media moved to GridFS.
+    audioBase64: { type: String, default: undefined },
+    audioFileId: { type: Schema.Types.ObjectId, default: null },
     videoFileId: { type: Schema.Types.ObjectId, default: null },
     videoMimeType: { type: String, default: "video/webm" },
     transcript: { type: String, default: "" },
@@ -14,7 +16,7 @@ const AnswerSchema = new Schema(
     language: { type: String, default: "" },
     confidence: { type: Number, default: null },
     needsReview: { type: Boolean, default: false },
-    translationStatus: { type: String, enum: ["pending", "done", "failed"], default: "pending" },
+      translationStatus: { type: String, enum: ["pending", "done", "needs_review", "failed"], default: "pending" },
     submittedAt: { type: Date, default: Date.now },
   },
   { _id: false }

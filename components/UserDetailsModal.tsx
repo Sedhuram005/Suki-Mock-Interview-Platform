@@ -13,7 +13,6 @@ import {
   User,
   ShieldCheck,
   ExternalLink,
-  Sparkles,
   FileText,
   CheckCircle2,
   ArrowRight,
@@ -108,54 +107,50 @@ export default function UserDetailsModal({ open, onClose, userDetails }: Props) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 sm:p-6 overflow-y-auto animate-fade-in">
-      <div className="relative w-full max-w-3xl rounded-3xl border-2 border-blue-100 bg-white shadow-2xl shadow-blue-950/20 overflow-hidden my-auto">
+      <div className="relative w-full max-w-3xl rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-blue-950/25 overflow-hidden my-auto">
         {/* Header with Executive Corporate Blue Gradient */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white p-6 sm:p-8 border-b border-blue-800/40">
-          <div className="pointer-events-none absolute -top-20 -right-20 size-60 rounded-full bg-blue-500/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-20 -left-20 size-60 rounded-full bg-indigo-500/20 blur-3xl" />
-
+        <div className="relative overflow-hidden bg-white text-slate-900 p-6 sm:p-8 border-b border-slate-200">
           <div className="relative flex items-start justify-between gap-4">
             <div className="flex items-center gap-4 sm:gap-5">
               <div className="relative">
-                <div className="flex size-16 sm:size-18 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-400 via-blue-600 to-indigo-600 text-white text-2xl font-black shadow-lg shadow-blue-500/30 ring-4 ring-white/20">
+                <div className="flex size-16 sm:size-18 items-center justify-center rounded-2xl bg-blue-600 text-white text-2xl font-bold">
                   {displayName.charAt(0).toUpperCase()}
                 </div>
                 <div
-                  className="absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full bg-emerald-400 text-slate-950 ring-2 ring-white shadow-sm"
-                  title="Verified in Database"
+                  className="absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full bg-emerald-500 text-white ring-2 ring-white"
+                  title="Verified"
                 >
-                  <CheckCircle2 size={14} className="fill-emerald-400 text-slate-950" />
+                  <CheckCircle2 size={14} />
                 </div>
               </div>
 
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-display text-2xl sm:text-3xl font-black text-white tracking-tight">
+                  <h2 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
                     {displayName}
                   </h2>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-cyan-400/20 border border-cyan-300/40 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-cyan-200">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
                     <Database size={10} />
-                    MongoDB Synced
+                    Synced
                   </span>
                 </div>
 
-                <p className="mt-1 text-xs sm:text-sm font-semibold text-blue-200">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-600">
                   {userDetails?.profession || "Candidate"}{" "}
                   {userDetails?.company ? `• ${userDetails.company}` : ""}
                 </p>
 
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs font-medium text-blue-200/80">
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500">
                   {userDetails?.location && (
-                    <span className="flex items-center gap-1 text-blue-100">
-                      <MapPin size={13} className="text-cyan-300" />
+                    <span className="flex items-center gap-1">
+                      <MapPin size={13} className="text-blue-600" />
                       {userDetails.location}
                       {userDetails?.country ? `, ${userDetails.country}` : ""}
                     </span>
                   )}
-                  <span className="text-blue-300/60">&bull;</span>
-                  <span className="flex items-center gap-1 text-emerald-300 font-semibold">
+                  <span className="flex items-center gap-1 text-emerald-700 font-semibold">
                     <ShieldCheck size={13} />
-                    Verified Candidate Dossier
+                    Verified profile
                   </span>
                 </div>
               </div>
@@ -163,7 +158,7 @@ export default function UserDetailsModal({ open, onClose, userDetails }: Props) 
 
             <button
               onClick={onClose}
-              className="grid size-10 place-items-center rounded-xl border border-white/10 text-blue-200 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+              className="grid size-10 place-items-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
               title="Close modal"
             >
               <X size={20} />
@@ -172,7 +167,7 @@ export default function UserDetailsModal({ open, onClose, userDetails }: Props) 
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex border-b border-blue-100 bg-blue-50/60 px-6 sm:px-8 py-2.5 gap-2 overflow-x-auto">
+        <div className="flex border-b border-slate-200 bg-white px-6 sm:px-8 py-2.5 gap-2 overflow-x-auto">
           {PROFILE_TABS.map((tab) => (
             <button
               key={tab.id}
@@ -329,7 +324,7 @@ export default function UserDetailsModal({ open, onClose, userDetails }: Props) 
               {skillsList.length > 0 && (
                 <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
                   <p className="text-[10px] font-extrabold uppercase tracking-wider text-blue-900 mb-2.5 flex items-center gap-1.5">
-                    <Sparkles size={13} className="text-blue-600" />
+
                     Verified Candidate Competencies ({skillsList.length})
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -481,7 +476,7 @@ export default function UserDetailsModal({ open, onClose, userDetails }: Props) 
         </div>
 
         {/* Footer Actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-between border-t border-blue-100 bg-slate-50 px-6 sm:px-8 py-4 gap-3">
+        <div className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-200 bg-white px-6 sm:px-8 py-4 gap-3">
           <div className="text-xs text-slate-600 font-medium flex items-center gap-1.5">
             <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Profile stored in MongoDB &middot; Verified for Voice Screening</span>

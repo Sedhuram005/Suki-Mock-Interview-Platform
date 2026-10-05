@@ -1,13 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import mongoose from 'mongoose';
+import { translateAudioToEnglish } from './local-whisper-client.mjs';
 
 const projectRoot = process.cwd();
-const envCandidates = [path.join(projectRoot, '.env.local'), path.join(projectRoot, '.env')];
-
-for (const envFile of envCandidates) {
+for (const envFile of ['.env.local', '.env']) {
   try {
-    const contents = fs.readFileSync(envFile, 'utf8');
+    const contents = fs.readFileSync(path.join(projectRoot, envFile), 'utf8');
     for (const line of contents.split(/\r?\n/)) {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
@@ -17,245 +16,170 @@ for (const envFile of envCandidates) {
       if (!process.env[key]) process.env[key] = value;
     }
   } catch {
-    // Ignore missing env files; will fail later if MONGODB_URI is not set.
+    // The required settings are validated below.
   }
 }
 
 const uri = process.env.MONGODB_URI;
-if (!uri) {
-  console.error('MONGODB_URI is not defined. Add it to .env.local or .env');
-  process.exit(1);
-}
-
-const openAiKey = process.env.OPENAI_API_KEY;
-
+if (!uri) throw new Error('MONGODB_URI is not defined. Add it to .env.local or .env.');
+const forceRetranslate = process.argv.includes('--retranslate');
 const exportDir = path.join(projectRoot, 'exports');
 fs.mkdirSync(exportDir, { recursive: true });
-
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-const outputFile = path.join(exportDir, `interviews-${timestamp}.json`);
-const csvOutputFile = path.join(exportDir, `interviews-${timestamp}.csv`);
+const transcriptFile = path.join(exportDir, `english-translations-${timestamp}.txt`);
+const jsonFile = path.join(exportDir, `interviews-${timestamp}.json`);
+const csvFile = path.join(exportDir, `interviews-${timestamp}.csv`);
 
-function toCsvValue(value) {
+function csvValue(value) {
   if (value === null || value === undefined) return '';
   const text = String(value);
-  if (/[",\n]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`;
-  }
-  return text;
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-function interviewsToCsv(interviews) {
-  const headers = [
-    'interviewId',
-    'sessionName',
-    'userEmail',
-    'candidateName',
-    'status',
-    'createdAt',
-    'updatedAt',
-    'answerIndex',
-    'questionId',
-    'questionText',
-    'audioBase64',
-    'mimeType',
-    'videoFileId',
-    'videoMimeType',
-    'language',
-    'confidence',
-    'needsReview',
-    'englishText',
-    'translationStatus',
-    'submittedAt',
-  ];
-
-  const rows = [headers.join(',')];
-
-  for (const interview of interviews) {
-    const answers = Array.isArray(interview.answers) ? interview.answers : [];
-
-    if (answers.length === 0) {
-      rows.push([
-        interview._id?.toString?.() || '',
-        interview.sessionName || '',
-        interview.userEmail || '',
-        interview.candidateName || '',
-        interview.status || '',
-        interview.createdAt || '',
-        interview.updatedAt || '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-      ].map(toCsvValue).join(','));
-      continue;
-    }
-
-    answers.forEach((answer, index) => {
-      rows.push([
-        interview._id?.toString?.() || '',
-        interview.sessionName || '',
-        interview.userEmail || '',
-        interview.candidateName || '',
-        interview.status || '',
-        interview.createdAt || '',
-        interview.updatedAt || '',
-        index,
-        answer.questionId ?? '',
-        answer.questionText ?? '',
-        answer.audioBase64 ?? '',
-        answer.mimeType ?? '',
-        answer.videoFileId?.toString?.() ?? '',
-        answer.videoMimeType ?? '',
-        answer.language ?? '',
-        answer.confidence ?? '',
-        answer.needsReview ?? '',
-        answer.englishText ?? '',
-        answer.translationStatus ?? '',
-        answer.submittedAt || '',
-      ].map(toCsvValue).join(','));
+async function readAudioBytes(answer, audioBucket) {
+  if (answer.audioFileId) {
+    const fileId = new mongoose.Types.ObjectId(answer.audioFileId);
+    const file = await audioBucket.find({ _id: fileId }).next();
+    if (!file) throw new Error('Original audio is missing from GridFS.');
+    if (file.length > 25_000_000) throw new Error('Original audio exceeds the local translation size limit.');
+    return new Promise((resolve, reject) => {
+      const chunks = [];
+      const stream = audioBucket.openDownloadStream(fileId);
+      stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+      stream.once('error', reject);
+      stream.once('end', () => resolve(Buffer.concat(chunks)));
     });
   }
-
-  return rows.join('\n') + '\n';
+  if (answer.audioBase64) return Buffer.from(answer.audioBase64, 'base64');
+  throw new Error('No saved audio is available.');
 }
 
-async function callWhisper(pathName, audioBase64, mimeType, responseFormat) {
-  const buffer = Buffer.from(audioBase64, 'base64');
-  if (buffer.length === 0) throw new Error('Stored audio is empty.');
-
-  const audioType = mimeType || 'audio/webm';
-  const extension = audioType.includes('mp4') ? 'm4a' : 'webm';
-  const form = new FormData();
-  form.append('file', new Blob([buffer], { type: audioType }), `answer.${extension}`);
-  form.append('model', 'whisper-1');
-  form.append('response_format', responseFormat);
-
-  const response = await fetch(`https://api.openai.com/v1/audio/${pathName}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${openAiKey}` },
-    body: form,
-    signal: AbortSignal.timeout(40_000),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Whisper ${pathName} failed with status ${response.status}: ${await response.text()}`);
-  }
-
-  return response.json();
-}
-
-async function translateStoredAnswer(answer) {
-  if (!answer.audioBase64) throw new Error('No stored audio is available.');
-  const mimeType = answer.mimeType || 'audio/webm';
-  const translation = await callWhisper('translations', answer.audioBase64, mimeType, 'json');
-  const englishText = String(translation.text ?? '').trim();
-  if (!englishText) throw new Error('Whisper returned an empty English translation.');
-
-  return { englishText };
-}
-
-function toEnglishOnlyInterview(interview) {
+function toExportInterview(interview) {
   return {
-    ...interview,
-    answers: (interview.answers ?? []).map((answer) => {
-      const englishAnswer = { ...answer };
-      delete englishAnswer.transcript;
-      delete englishAnswer.originalText;
-      return englishAnswer;
-    }),
+    _id: interview._id.toString(),
+    sessionName: interview.sessionName || '',
+    status: interview.status || '',
+    createdAt: interview.createdAt || null,
+    updatedAt: interview.updatedAt || null,
+    answers: (interview.answers || []).map((answer) => ({
+      questionId: answer.questionId,
+      questionText: answer.questionText || '',
+      audioFileId: answer.audioFileId?.toString?.() || null,
+      videoFileId: answer.videoFileId?.toString?.() || null,
+      mimeType: answer.mimeType || 'audio/webm',
+      videoMimeType: answer.videoMimeType || 'video/webm',
+      language: answer.language || '',
+      confidence: answer.confidence ?? null,
+      needsReview: Boolean(answer.needsReview),
+      englishText: answer.needsReview ? '' : String(answer.englishText || '').trim(),
+      translationStatus: answer.needsReview ? 'needs_review' : (answer.translationStatus || 'pending'),
+      submittedAt: answer.submittedAt || null,
+    })),
   };
 }
 
 async function main() {
   await mongoose.connect(uri, {
     bufferCommands: false,
-    maxPoolSize: 10,
+    maxPoolSize: 5,
     serverSelectionTimeoutMS: 15000,
     connectTimeoutMS: 15000,
-    socketTimeoutMS: 30000,
+    socketTimeoutMS: 60000,
   });
-
   const db = mongoose.connection.db;
-  if (!db) {
-    throw new Error('MongoDB connection is not ready.');
-  }
+  if (!db) throw new Error('MongoDB connection is not ready.');
 
   const interviews = await db.collection('interviews').find({}).sort({ _id: 1 }).toArray();
-  const answerCount = interviews.reduce((count, interview) => count + (interview.answers?.length ?? 0), 0);
-  if (answerCount > 0 && !openAiKey) {
-    throw new Error('OPENAI_API_KEY is required to translate stored interview audio during export.');
-  }
+  const audioBucket = new mongoose.mongo.GridFSBucket(db, { bucketName: 'interviewAudio' });
+  let answerCount = 0;
+  let translationFailures = 0;
 
-  let failedTranslations = 0;
   for (const interview of interviews) {
-    for (const [index, answer] of (interview.answers ?? []).entries()) {
+    for (const [index, answer] of (interview.answers || []).entries()) {
+      answerCount += 1;
+      const needsTranslation = forceRetranslate || answer.translationStatus !== 'done' || answer.needsReview || !String(answer.englishText || '').trim();
+      if (!needsTranslation || (!answer.audioFileId && !answer.audioBase64)) continue;
+
       try {
-        const translated = await translateStoredAnswer(answer);
+        const audioBytes = await readAudioBytes(answer, audioBucket);
+        const translated = await translateAudioToEnglish(audioBytes, answer.mimeType || 'audio/webm');
         Object.assign(answer, translated, { translationStatus: 'done' });
         await db.collection('interviews').updateOne(
           { _id: interview._id },
           {
             $set: {
               [`answers.${index}.englishText`]: translated.englishText,
+              [`answers.${index}.language`]: translated.language,
+              [`answers.${index}.confidence`]: translated.confidence,
+              [`answers.${index}.needsReview`]: translated.needsReview,
               [`answers.${index}.translationStatus`]: 'done',
             },
           },
         );
       } catch (error) {
-        failedTranslations += 1;
+        translationFailures += 1;
         answer.englishText = '';
+        answer.language = '';
+        answer.confidence = null;
         answer.translationStatus = 'failed';
-        console.error(
-          `Translation failed for interview ${interview._id}, question ${answer.questionId}:`,
-          error.message || error,
-        );
+        answer.needsReview = true;
         await db.collection('interviews').updateOne(
           { _id: interview._id },
           {
             $set: {
               [`answers.${index}.englishText`]: '',
+              [`answers.${index}.language`]: '',
+              [`answers.${index}.confidence`]: null,
               [`answers.${index}.translationStatus`]: 'failed',
+              [`answers.${index}.needsReview`]: true,
             },
           },
         );
+        console.error(`Local translation failed for question ${answer.questionId}: ${error.message || error}`);
       }
     }
   }
 
-  const payload = interviews.map((item) => toEnglishOnlyInterview({
-    ...item,
-    _id: item._id.toString(),
+  const payload = interviews.map(toExportInterview);
+  const englishAnswers = payload.flatMap((interview) => interview.answers
+    .filter((answer) => answer.translationStatus === 'done' && !answer.needsReview)
+    .map((answer) => answer.englishText)
+    .filter(Boolean));
+  const transcript = `${englishAnswers.join('\n\n')}\n`;
+  fs.writeFileSync(transcriptFile, transcript, 'utf8');
+  fs.writeFileSync(jsonFile, JSON.stringify(payload, null, 2), 'utf8');
+
+  const csvRows = [[
+    'interviewId', 'sessionName', 'status', 'questionId', 'questionText', 'audioFileId',
+    'videoFileId', 'mimeType', 'videoMimeType', 'language', 'confidence', 'needsReview',
+    'englishText', 'translationStatus', 'submittedAt',
+  ].join(',')];
+  for (const interview of payload) {
+    for (const answer of interview.answers) {
+      csvRows.push([
+        interview._id, interview.sessionName, interview.status, answer.questionId, answer.questionText,
+        answer.audioFileId, answer.videoFileId, answer.mimeType, answer.videoMimeType, answer.language,
+        answer.confidence, answer.needsReview, answer.englishText, answer.translationStatus, answer.submittedAt,
+      ].map(csvValue).join(','));
+    }
+  }
+  fs.writeFileSync(csvFile, `${csvRows.join('\n')}\n`, 'utf8');
+
+  console.log(JSON.stringify({
+    interviews: payload.length,
+    answers: answerCount,
+    englishTexts: englishAnswers.length,
+    translationFailures,
+    transcriptFile,
+    jsonFile,
+    csvFile,
   }));
-
-  fs.writeFileSync(outputFile, JSON.stringify(payload, null, 2));
-  fs.writeFileSync(csvOutputFile, interviewsToCsv(payload));
-
-  console.log(`Exported ${payload.length} interview record(s) to ${outputFile}`);
-  console.log(`CSV export available at ${csvOutputFile}`);
-  if (payload.length > 0) {
-    console.log('Sample interview id:', payload[0]._id);
-  }
-  if (failedTranslations > 0) {
-    console.error(`${failedTranslations} answer(s) could not be translated; their English text is blank and status is failed.`);
-    process.exitCode = 1;
-  }
+  if (translationFailures) process.exitCode = 1;
 }
 
 main()
-  .catch((err) => {
-    console.error('Export failed:', err.message || err);
-    process.exit(1);
+  .catch((error) => {
+    console.error(`Interview export failed: ${error.message || error}`);
+    process.exitCode = 1;
   })
-  .finally(() => {
-    mongoose.disconnect().catch(() => {});
-  });
+  .finally(() => mongoose.disconnect().catch(() => {}));

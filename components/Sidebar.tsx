@@ -14,6 +14,7 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { type UserDetails } from "@/components/UserDetailsModal";
 
 export const STEPS = [
@@ -41,8 +42,8 @@ export default function Sidebar({
   name,
   micReady,
   cameraReady = false,
-  cameraLabel,
   userDetails,
+  cameraLabel,
   questionIndex = 0,
   totalQuestions = 4,
   elapsed = 0,
@@ -65,128 +66,92 @@ export default function Sidebar({
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   return (
-    <aside
-      className="hidden lg:flex shrink-0 flex-col m-3 overflow-y-auto overflow-x-hidden"
-      style={{
-        width: "320px",
-        borderRadius: "40px",
-        background: "linear-gradient(135deg, #2563EB 0%, #1E40AF 100%)",
-        border: "1.5px solid #1E40AF",
-        boxShadow: "0 4px 32px rgba(37,99,235,0.25), 0 1px 4px rgba(0,0,0,0.1)",
-      }}
-    >
-      {/* ─── HEADER ─── */}
-      <div className="px-6 pt-6 pb-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.15)" }}>
+    <aside className="hidden lg:flex w-80 shrink-0 flex-col m-3 overflow-y-auto overflow-x-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.06)]">
+      <div className="px-6 pt-6 pb-4 border-b border-slate-100">
         <div className="flex items-center justify-between">
-          <h2 className="text-[18px] font-black text-white tracking-tight">
-            Candidate Portal
-          </h2>
-          <span
-            className="flex items-center gap-1 text-[10px] font-bold text-white"
-            style={{
-              background: "rgba(255,255,255,0.15)",
-              border: "1.5px solid rgba(255,255,255,0.3)",
-              borderRadius: "20px",
-              padding: "4px 10px",
-            }}
-          >
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/suki-logo-cropped.png"
+              alt="Suki Software Solutions"
+              width={140}
+              height={50}
+              className="h-8 w-auto object-contain"
+            />
+          </Link>
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
             <BadgeCheck size={12} />
             Verified
           </span>
         </div>
+        <p className="mt-1 text-xs font-medium text-slate-500">Candidate portal</p>
       </div>
 
-      {/* ─── PROFILE CARD ─── */}
-      <div className="px-4 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.15)" }}>
+      <div className="px-4 py-4 border-b border-slate-100">
         <button
           type="button"
           onClick={onOpenProfile}
-          className="w-full flex items-center gap-4 cursor-pointer text-left transition-colors duration-200 hover:bg-white/10"
-          style={{
-            background: "rgba(255,255,255,0.1)",
-            border: "1.5px solid rgba(255,255,255,0.2)",
-            borderRadius: "20px",
-            padding: "16px",
-          }}
+          className="w-full flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-left transition hover:border-blue-200 hover:bg-blue-50/60 cursor-pointer"
         >
-          {/* Avatar */}
           <div className="relative shrink-0">
-            <div
-              className="flex items-center justify-center font-black text-[20px] text-white"
-              style={{
-                width: "52px",
-                height: "52px",
-                borderRadius: "16px",
-                background: "rgba(255,255,255,0.2)",
-                boxShadow: "0 4px 16px rgba(255,255,255,0.15)",
-              }}
-            >
+            <div className="flex size-12 items-center justify-center rounded-xl bg-blue-600 text-lg font-bold text-white">
               {initial}
             </div>
-            <span
-              className="absolute -bottom-1 -right-1 flex items-center justify-center bg-white rounded-full"
-              style={{ width: "18px", height: "18px", border: "2px solid #1E40AF" }}
-            >
-              <Check size={10} color="#1E40AF" strokeWidth={3} />
+            <span className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-white ring-1 ring-slate-200">
+              <Check size={10} className="text-blue-600" strokeWidth={3} />
             </span>
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-bold text-white truncate">{displayName}</p>
-            <p className="text-[12px] font-semibold text-blue-100 truncate mt-0.5">{role}</p>
-            <p className="text-[11px] text-blue-200 truncate mt-0.5">{emailVal}</p>
+            <p className="text-sm font-semibold text-slate-900 truncate">{displayName}</p>
+            <p className="text-xs font-medium text-slate-600 truncate mt-0.5">{role}</p>
+            <p className="text-[11px] text-slate-400 truncate mt-0.5">{emailVal}</p>
           </div>
 
-          <ChevronRight size={16} className="shrink-0 text-blue-200" />
+          <ChevronRight size={16} className="shrink-0 text-slate-400" />
         </button>
       </div>
 
-      {/* ─── INFO ROWS ─── */}
-      <div className="px-6 py-3 space-y-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.15)" }}>
-        {/* Session Timer */}
-        <div className="flex items-center justify-between py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-          <span className="flex items-center gap-2 text-[12px] text-blue-100 font-medium">
-            <Radio size={14} className="text-emerald-400" />
-            Session Time:
+      <div className="px-6 py-2 border-b border-slate-100">
+        <div className="flex items-center justify-between py-3 border-b border-slate-100">
+          <span className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+            <Radio size={14} className="text-emerald-600" />
+            Session time
           </span>
-          <span className="text-[13px] font-bold text-white font-mono">{fmtTime(elapsed)}</span>
+          <span className="text-sm font-semibold tabular-nums text-slate-900">{fmtTime(elapsed)}</span>
         </div>
 
-        {/* Mic Status */}
-        <div className="flex items-center justify-between py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-          <span className="flex items-center gap-2 text-[12px] text-blue-100 font-medium">
-            <Mic size={14} className={micReady ? "text-emerald-400" : "text-blue-300"} />
-            Microphone:
+        <div className="flex items-center justify-between py-3 border-b border-slate-100">
+          <span className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+            <Mic size={14} className={micReady ? "text-emerald-600" : "text-slate-400"} />
+            Microphone
           </span>
-          <span className={`text-[13px] font-bold ${micReady ? "text-emerald-400" : "text-blue-300"}`}>
-            {micReady ? "Calibrated" : "Standby"}
+          <span className={`text-sm font-semibold ${micReady ? "text-emerald-700" : "text-slate-400"}`}>
+            {micReady ? "Ready" : "Standby"}
           </span>
         </div>
 
-        <div className="flex items-center justify-between gap-2 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-          <span className="flex items-center gap-2 text-[12px] text-blue-100 font-medium">
-            <Video size={14} className={cameraReady ? "text-emerald-400" : "text-blue-300"} />
-            Camera:
+        <div className="flex items-center justify-between gap-2 py-3 border-b border-slate-100">
+          <span className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+            <Video size={14} className={cameraReady ? "text-emerald-600" : "text-slate-400"} />
+            Camera
           </span>
-          <span className={`max-w-[140px] truncate text-right text-[12px] font-bold ${cameraReady ? "text-emerald-400" : "text-blue-300"}`}>
+          <span className={`max-w-[140px] truncate text-right text-xs font-semibold ${cameraReady ? "text-emerald-700" : "text-slate-400"}`}>
             {cameraReady ? cameraLabel || "Ready" : "Standby"}
           </span>
         </div>
 
-        {/* AI Engine */}
         <div className="flex items-center justify-between py-3">
-          <span className="flex items-center gap-2 text-[12px] text-blue-100 font-medium">
-            <Cpu size={14} className="text-blue-300" />
-            Speech input:
+          <span className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+            <Cpu size={14} className="text-blue-600" />
+            Speech input
           </span>
-          <span className="text-[13px] font-bold text-white">Any language</span>
+          <span className="text-sm font-semibold text-slate-800">Any language</span>
         </div>
       </div>
 
-      {/* ─── INTERVIEW STAGES ─── */}
-      <div className="px-4 py-4 flex-1" style={{ borderBottom: "1px solid rgba(255,255,255,0.15)" }}>
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-blue-200 px-2 mb-3">
-          Interview Stages
+      <div className="px-4 py-4 flex-1">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 px-2 mb-3">
+          Interview stages
         </p>
         <div className="space-y-2">
           {STEPS.map((step, index) => {
@@ -197,98 +162,65 @@ export default function Sidebar({
             return (
               <div
                 key={step.fullLabel}
-                className="relative flex items-center gap-3 transition-all duration-200"
-                style={{
-                  borderRadius: "16px",
-                  padding: "12px 14px",
-                  background: active ? "rgba(255,255,255,0.25)" : complete ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.08)",
-                  border: active
-                    ? "1.5px solid rgba(255,255,255,0.4)"
+                className={`relative flex items-center gap-3 rounded-2xl border px-3.5 py-3 ${
+                  active
+                    ? "border-blue-200 bg-blue-50"
                     : complete
-                    ? "1.5px solid rgba(16,185,129,0.4)"
-                    : "1.5px solid rgba(255,255,255,0.15)",
-                  boxShadow: active ? "0 4px 16px rgba(255,255,255,0.15)" : "none",
-                }}
+                    ? "border-emerald-200 bg-emerald-50/70"
+                    : "border-slate-200 bg-white"
+                }`}
               >
-                {/* Icon */}
                 <span
-                  className="shrink-0 flex items-center justify-center"
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 12,
-                    background: complete ? "#10B981" : active ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.15)",
-                    boxShadow: complete ? "0 2px 8px rgba(16,185,129,0.3)" : "none",
-                  }}
+                  className={`shrink-0 flex size-9 items-center justify-center rounded-xl ${
+                    complete
+                      ? "bg-emerald-600 text-white"
+                      : active
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-100 text-slate-500"
+                  }`}
                 >
-                  {complete
-                    ? <Check size={17} color="white" strokeWidth={2.5} />
-                    : <Icon size={17} color={active ? "white" : "#BFDBFE"} />
-                  }
+                  {complete ? <Check size={17} strokeWidth={2.5} /> : <Icon size={17} />}
                 </span>
 
                 <div className="min-w-0 flex-1">
-                  <p className={`text-[13px] font-bold leading-tight ${active ? "text-white" : complete ? "text-emerald-300" : "text-blue-100"}`}>
+                  <p className={`text-sm font-semibold leading-tight ${active ? "text-blue-950" : complete ? "text-emerald-900" : "text-slate-700"}`}>
                     {step.fullLabel}
                   </p>
-                  <p className={`text-[10px] mt-0.5 font-semibold ${active ? "text-blue-100" : complete ? "text-emerald-400" : "text-blue-300"}`}>
-                    {complete ? "✓ Completed" : active ? "In Progress" : "Pending"}
+                  <p className={`text-[11px] mt-0.5 font-medium ${active ? "text-blue-700" : complete ? "text-emerald-700" : "text-slate-400"}`}>
+                    {complete ? "Completed" : active ? "In progress" : "Pending"}
                   </p>
                   {active && index === 1 && (
-                    <div className="mt-2 h-1 w-full rounded-full bg-white/30">
+                    <div className="mt-2 h-1 w-full rounded-full bg-blue-100">
                       <div
-                        className="h-full rounded-full bg-white transition-all duration-500"
+                        className="h-full rounded-full bg-blue-600 transition-all duration-500"
                         style={{ width: `${(questionIndex / totalQuestions) * 100}%` }}
                       />
                     </div>
                   )}
                 </div>
-
-                {active && (
-                  <span
-                    className="shrink-0 flex items-center justify-center text-[10px] font-extrabold text-blue-600 bg-white"
-                    style={{ width: 22, height: 22, borderRadius: 7 }}
-                  >
-                    {index + 1}
-                  </span>
-                )}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* ─── BOTTOM ACTIONS ─── */}
-      <div className="px-4 py-4 space-y-2 shrink-0">
-        {/* Home button */}
+      <div className="px-4 py-4 space-y-2 shrink-0 border-t border-slate-100">
         <Link
           href="/"
-          className="flex items-center justify-center gap-2 w-full bg-white/10 hover:bg-white/20 text-white font-bold text-[13px] transition-colors duration-200"
-          style={{
-            borderRadius: "16px",
-            padding: "12px 16px",
-            border: "1.5px solid rgba(255,255,255,0.2)",
-          }}
+          className="flex items-center justify-center gap-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
         >
-          <Home size={16} className="text-blue-200" />
-          Back to Home
+          <Home size={16} className="text-blue-600" />
+          Back to home
         </Link>
 
-        {/* Sign out */}
         {onLogout && (
           <button
             type="button"
             onClick={onLogout}
-            className="flex items-center justify-center gap-2 w-full text-blue-200 hover:text-white hover:bg-white/10 font-semibold text-[12px] cursor-pointer transition-all duration-200"
-            style={{
-              borderRadius: "14px",
-              padding: "10px 16px",
-              border: "1px solid rgba(255,255,255,0.15)",
-              background: "rgba(255,255,255,0.05)",
-            }}
+            className="flex items-center justify-center gap-2 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 cursor-pointer transition-colors"
           >
             <LogOut size={14} />
-            Switch candidate or sign out
+            Sign out
           </button>
         )}
       </div>

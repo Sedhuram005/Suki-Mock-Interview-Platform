@@ -1,19 +1,33 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import NavigationLoader from "@/components/NavigationLoader";
+import ClickSpark from "@/components/ClickSpark";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "TalentIQ | Assessment Portal",
-  description: "Voice-based interview assessment portal.",
+  title: "Suki Software Solutions | AI Interview Assessment Portal",
+  description: "Voice-based technical interview assessment portal by Suki Software Solutions.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" },
+      { url: "/suki-mark.png", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        {children}
+        <ClickSpark sparkColor="#ffffff" sparkSize={10} sparkRadius={15} sparkCount={8} duration={400}>
+          <NavigationLoader />
+          {children}
+        </ClickSpark>
       </body>
     </html>
   );

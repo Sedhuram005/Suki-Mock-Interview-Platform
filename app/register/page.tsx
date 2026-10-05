@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
+import SukiLoadingMark from "@/components/SukiLoadingMark";
 import {
   ArrowRight,
-  ShieldCheck,
   Mail,
   Phone,
   MapPin,
@@ -20,12 +21,12 @@ import {
   EyeOff,
   AlertCircle,
   CheckCircle2,
-  Sparkles,
   ArrowLeft,
   X,
   Plus,
 } from "lucide-react";
 import { btnPrimary, btnSecondary, input } from "@/lib/ui";
+import { startPageLoad } from "@/lib/page-loader";
 
 const LinkedinIcon = ({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -209,8 +210,9 @@ export default function RegisterPage() {
       localStorage.setItem("userEmail", formData.email);
       localStorage.setItem("isLoggedIn", "true");
 
-      // Redirect directly to the home page with all details loaded
-      router.push("/");
+      startPageLoad();
+      const nextPath = new URLSearchParams(window.location.search).get("next");
+      router.replace(nextPath === "/interview" ? "/interview" : "/");
     } catch (err: unknown) {
       console.error("Registration error:", err);
       setError(
@@ -238,39 +240,34 @@ export default function RegisterPage() {
   const strength = getPasswordStrength();
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 py-12 px-4 selection:bg-blue-600 selection:text-white relative overflow-hidden">
-      {/* Subtle ambient corporate blue glows */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 size-[550px] rounded-full bg-blue-500/10 blur-[140px]" />
-        <div className="absolute top-1/2 -left-40 size-[500px] rounded-full bg-sky-400/10 blur-[130px]" />
-        <div className="absolute bottom-0 right-1/4 size-[450px] rounded-full bg-indigo-500/10 blur-[120px]" />
-        {/* Subtle grid pattern */}
-        <div className="absolute inset-0 bg-[radial-gradient(#1e40af0d_1px,transparent_1px)] [background-size:28px_28px]" />
-      </div>
-
+    <div className="min-h-screen bg-white text-slate-900 py-10 px-4">
       <div className="relative mx-auto max-w-3xl">
-        {/* Header */}
-        <div className="mb-10 text-center">
+        <div className="mb-8 text-center">
           <Link href="/" className="inline-block group mb-4">
-            <div className="relative mx-auto flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white shadow-xl shadow-blue-500/30 ring-4 ring-blue-50 transition-transform group-hover:scale-105">
-              <ShieldCheck size={34} className="stroke-[2.2]" />
-              <div className="absolute -top-1 -right-1 size-3.5 rounded-full bg-emerald-400 ring-2 ring-white" />
-            </div>
+            <Image
+              src="/suki-logo-cropped.png"
+              alt="Suki Software Solutions"
+              width={180}
+              height={65}
+              priority
+              className="h-12 w-auto object-contain mx-auto"
+            />
           </Link>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3.5 py-1 text-xs font-bold text-blue-700 shadow-sm mb-3">
-            <Sparkles size={13} className="text-blue-600" />
-            TalentIQ Assessment Network
-          </span>
-          <h1 className="font-display text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            Create Candidate Dossier
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3.5 py-1 text-xs font-semibold text-blue-700 mb-3">
+
+              Suki Software Solutions Assessment
+            </span>
+          </div>
+          <h1 className="font-display text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">
+            Create candidate profile
           </h1>
           <p className="mt-2 text-sm sm:text-base text-slate-600 max-w-lg mx-auto">
-            Complete the 3-step setup to calibrate your candidate profile for real-time AI voice interview screening.
+            Complete this 3-step setup so your profile is ready for a live voice interview.
           </p>
         </div>
 
-        {/* Unique Multi-Step Progress Tracker */}
-        <div className="mb-8 rounded-2xl border-2 border-blue-100 bg-white p-4 sm:p-5 shadow-xl shadow-blue-900/5">
+        <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
           {/* Progress bar line */}
           <div className="relative mb-4 h-2 w-full rounded-full bg-blue-100 overflow-hidden">
             <div
@@ -330,7 +327,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Registration Form Card */}
-        <div className="rounded-3xl border-2 border-blue-100 bg-white shadow-2xl shadow-blue-900/10 overflow-hidden">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           {error && (
             <div className="flex items-start gap-3 border-b border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-800">
               <AlertCircle size={18} className="mt-0.5 shrink-0 text-rose-600" />
@@ -907,7 +904,7 @@ export default function RegisterPage() {
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
-                      <div className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      <SukiLoadingMark size={16} />
                       <span>Saving Profile to Database...</span>
                     </span>
                   ) : (
@@ -925,9 +922,9 @@ export default function RegisterPage() {
         {/* Existing account prompt */}
         <div className="mt-8 text-center">
           <p className="text-sm font-medium text-slate-600">
-            Already have an active candidate profile?{" "}
-            <Link href="/" className="font-bold text-blue-600 hover:text-blue-800 underline underline-offset-4">
-              Sign In to Candidate Portal
+            Already have a candidate profile?{" "}
+            <Link href="/" className="font-semibold text-blue-700 hover:text-blue-800 underline underline-offset-4">
+              Sign in
             </Link>
           </p>
         </div>

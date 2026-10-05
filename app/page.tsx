@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import PillNav from "@/components/PillNav";
+import GridDistortion from "@/components/GridDistortion";
+import SukiLoadingMark from "@/components/SukiLoadingMark";
+import { startPageLoad } from "@/lib/page-loader";
 import {
   ArrowRight,
   Mail,
@@ -10,30 +15,38 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  Sparkles,
   ClipboardList,
   CheckCircle2,
   User,
   LogOut,
-  Phone,
-  GraduationCap,
   Check,
-  Hexagon,
   Layers,
   BarChart3,
   X,
-  Menu,
+  Code2,
+  Server,
+  Users,
+  Mic,
+  ShieldCheck,
+  Scale,
+  ChevronRight,
+  Zap,
+  Info,
+  FileCheck,
 } from "lucide-react";
 import UserDetailsModal, { UserDetails } from "@/components/UserDetailsModal";
 
 export default function Home() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"signin" | "register">("signin");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [continueToAssessment, setContinueToAssessment] = useState(false);
+  const [assessmentSignInPrompt, setAssessmentSignInPrompt] = useState(false);
   const [userData, setUserData] = useState<UserDetails | null>(null);
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [tracksModalOpen, setTracksModalOpen] = useState(false);
   const [scoringModalOpen, setScoringModalOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [selectedRubricIndex, setSelectedRubricIndex] = useState<number | null>(0);
 
   // Sign In form state
   const [loginEmail, setLoginEmail] = useState("");
@@ -56,11 +69,24 @@ export default function Home() {
   const [regSuccess, setRegSuccess] = useState("");
   const [regLoading, setRegLoading] = useState(false);
 
-  // Check stored user session after hydration.
+  // Check stored user session after hydration
   useEffect(() => {
     const timeout = window.setTimeout(() => {
+      const shouldContinueToAssessment = new URLSearchParams(window.location.search).get("next") === "/interview";
       const loggedIn = localStorage.getItem("isLoggedIn") === "true";
       const rawUserData = localStorage.getItem("userData");
+      setContinueToAssessment(shouldContinueToAssessment);
+
+      if (shouldContinueToAssessment && loggedIn) {
+        router.replace("/interview");
+        return;
+      }
+
+      if (shouldContinueToAssessment) {
+        setAssessmentSignInPrompt(true);
+        setActiveTab("signin");
+      }
+
       setIsLoggedIn(loggedIn);
       if (rawUserData) {
         try {
@@ -72,7 +98,7 @@ export default function Home() {
     }, 0);
 
     return () => window.clearTimeout(timeout);
-  }, []);
+  }, [router]);
 
   // Handle Login Submit
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -99,6 +125,10 @@ export default function Home() {
 
       setIsLoggedIn(true);
       setUserData(data.user);
+      if (continueToAssessment) {
+        startPageLoad();
+        router.replace("/interview");
+      }
     } catch (err: unknown) {
       console.error("Login error:", err);
       setLoginError(
@@ -158,6 +188,10 @@ export default function Home() {
       setRegSuccess("Account registered and synchronized to MongoDB successfully!");
       setIsLoggedIn(true);
       setUserData(data.user);
+      if (continueToAssessment) {
+        startPageLoad();
+        router.replace("/interview");
+      }
     } catch (err: unknown) {
       console.error("Registration error:", err);
       setRegError(err instanceof Error ? err.message : "Failed to complete registration.");
@@ -197,392 +231,425 @@ export default function Home() {
     userData?.name ||
     (userData?.firstName && userData?.lastName
       ? `${userData.firstName} ${userData.lastName}`.trim()
-      : "Candidate");
+      : "Sedhu Raman");
+
+  // Rubric Dimensions Definition
+  const rubricData = [
+    {
+      id: "tech-depth",
+      label: "Technical Depth & Precision",
+      weight: 35,
+      weightStr: "35%",
+      icon: Code2,
+      color: "from-blue-600 to-indigo-600",
+      accentBg: "bg-blue-50 border-blue-200 text-blue-700",
+      barColor: "bg-gradient-to-r from-blue-600 to-indigo-600",
+      desc: "Correctness of algorithmic solutions, architectural reasoning, and domain knowledge.",
+      keySignals: [
+        "Algorithmic correctness & edge-case handling",
+        "Asymptotic complexity analysis (Big-O time & space)",
+        "Idiomatic code patterns & system architecture",
+      ],
+      tip: "Structure your thoughts by stating the brute force approach, then optimize with clear trade-offs.",
+    },
+    {
+      id: "spoken-articulation",
+      label: "Spoken Articulation & Clarity",
+      weight: 28,
+      weightStr: "28%",
+      icon: Mic,
+      color: "from-cyan-500 to-blue-600",
+      accentBg: "bg-cyan-50 border-cyan-200 text-cyan-800",
+      barColor: "bg-gradient-to-r from-cyan-500 to-blue-600",
+      desc: "Crisp voice transmission, concise structure (STAR format), and minimal filler words.",
+      keySignals: [
+        "Structured explanations using STAR (Situation, Task, Action, Result)",
+        "Minimal vocal fillers ('um', 'like', long dead pauses < 2%)",
+        "Concise technical vocabulary & crisp delivery cadence",
+      ],
+      tip: "Pause for 2 seconds to formulate thoughts rather than speaking while thinking with filler words.",
+    },
+    {
+      id: "problem-solving",
+      label: "Problem Solving & Trade-offs",
+      weight: 25,
+      weightStr: "25%",
+      icon: Scale,
+      color: "from-violet-600 to-purple-600",
+      accentBg: "bg-violet-50 border-violet-200 text-violet-800",
+      barColor: "bg-gradient-to-r from-violet-600 to-purple-600",
+      desc: "Logical breakdown of ambiguity, alternative considerations, and scalability focus.",
+      keySignals: [
+        "Asking clarifying questions on inputs, scale, and assumptions",
+        "Evaluating alternative approaches before writing code",
+        "Identifying single points of failure & distributed bottlenecks",
+      ],
+      tip: "Always state two possible approaches and explain why you choose one over the other.",
+    },
+    {
+      id: "executive-presence",
+      label: "Executive Presence & Confidence",
+      weight: 12,
+      weightStr: "12%",
+      icon: ShieldCheck,
+      color: "from-emerald-500 to-teal-600",
+      accentBg: "bg-emerald-50 border-emerald-200 text-emerald-800",
+      barColor: "bg-gradient-to-r from-emerald-500 to-teal-600",
+      desc: "Steady speaking cadence, professional communication, and solution ownership.",
+      keySignals: [
+        "Even, measured vocal cadence (130-150 words per minute)",
+        "Collaborative demeanor when receiving AI hints or counter-questions",
+        "Decisive solution ownership without defensive hesitation",
+      ],
+      tip: "Treat the AI as a staff engineer partner in a real engineering team calibration.",
+    },
+  ];
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col justify-between bg-white text-slate-900 selection:bg-blue-600 selection:text-white font-sans overflow-x-hidden">
-      {/* ================= FLOWING CYAN-BLUE & WHITE WAVE BACKGROUND WITH 3D ANIMATION ================= */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100">
-        <div className="absolute inset-0 animate-wave-3d">
-          <Image
-            src="/bg-wave.jpg"
-            alt=""
-            fill
-            priority
-            quality={100}
-            sizes="100vw"
-            className="object-cover object-center brightness-110 contrast-105 saturate-110"
-            aria-hidden="true"
-          />
-        </div>
-        {/* Enhanced bright overlay for better readability and visual appeal */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/10 to-white/30" />
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-indigo-500/5" />
+    <div className="relative isolate min-h-screen w-full flex flex-col justify-between bg-transparent text-slate-900 selection:bg-blue-500 selection:text-slate-900 font-sans overflow-x-hidden">
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 -z-20 bg-[url('/landing-space-bg.png')] bg-cover bg-top bg-no-repeat"
+      >
+        <GridDistortion
+          imageSrc="/landing-space-bg.png"
+          grid={15}
+          mouse={0.1}
+          strength={0.15}
+          relaxation={0.9}
+          className="pointer-events-none"
+        />
       </div>
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 -z-10 bg-gradient-to-b from-slate-950/35 via-slate-950/20 to-slate-950/50"
+      />
 
-      {/* ================= TOP NAVIGATION BAR (CLEAN WHITE & BLUE GLASS) ================= */}
-      <div className="relative z-20 w-full max-w-[85%] mx-auto mt-6 px-6 sm:px-12 lg:px-20">
-        <header className="flex items-center justify-between border-b border-blue-100/60 bg-white/80 sticky top-0 backdrop-blur-md py-5" style={{ borderRadius: "15px" }}>
-        {/* Left: Hexagon Icon + Company Title */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative flex size-9 items-center justify-center rounded-xl bg-blue-50 border border-blue-200">
-            <Hexagon size={22} className="stroke-[2.4] text-blue-600 transition-transform group-hover:scale-110" />
-            <div className="absolute size-2 rounded-full bg-blue-600" />
-          </div>
-          <span className="font-display text-sm sm:text-base font-extrabold uppercase tracking-[0.25em] text-slate-900">
-            Talent<span className="text-blue-600">IQ</span>
-          </span>
-        </Link>
-
-        {/* Desktop Navigation */}
-        <div className="hidden lg:flex items-center gap-4 sm:gap-8">
-          <nav className="flex items-center gap-7 text-xs font-bold uppercase tracking-[0.15em] text-slate-600">
-            <Link
-              href="/interview"
-              className="flex items-center gap-1.5 text-blue-600 font-extrabold hover:text-blue-800 transition-colors py-1 border-b-2 border-blue-600"
-            >
-              <ClipboardList size={14} className="text-blue-600" />
-              <span>Assessment</span>
-            </Link>
-            <button
-              type="button"
-              onClick={() => setTracksModalOpen(true)}
-              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors cursor-pointer py-1"
-            >
-              <Layers size={14} className="text-blue-600" />
-              <span>Interview Tracks</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setScoringModalOpen(true)}
-              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors cursor-pointer py-1"
-            >
-              <BarChart3 size={14} className="text-blue-600" />
-              <span>AI Scoring Rubric</span>
-            </button>
-            {isLoggedIn && (
-              <button
-                type="button"
-                onClick={() => setUserModalOpen(true)}
-                className="flex items-center gap-1.5 hover:text-blue-600 transition-colors cursor-pointer py-1"
-              >
-                <User size={14} className="text-blue-600" />
-                <span>Candidate Dossier</span>
-              </button>
-            )}
-          </nav>
-
-          {/* Action CTAs: Start Interview & Auth Controls */}
-          {isLoggedIn ? (
-            <div className="flex items-center gap-2.5 sm:gap-3">
-              <button
-                type="button"
-                onClick={() => setUserModalOpen(true)}
-                className="hidden sm:flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/80 px-3.5 py-1.5 text-xs font-bold text-blue-900 hover:bg-blue-100 transition-all cursor-pointer shadow-sm"
-              >
-                <div className="size-5 rounded-full bg-blue-600 text-white text-[10px] grid place-items-center font-bold">
-                  {candidateDisplayName.charAt(0).toUpperCase()}
-                </div>
-                <span className="max-w-[120px] truncate">{candidateDisplayName}</span>
-              </button>
-
-              <Link
-                href="/interview"
-                className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-              >
-                <span>Launch Interview</span>
-                <ArrowRight size={13} />
-              </Link>
-
-              <button
-                type="button"
-                onClick={handleLogout}
-                title="Sign out"
-                className="size-9 rounded-full border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 grid place-items-center text-slate-500 transition-all cursor-pointer shadow-sm"
-              >
-                <LogOut size={14} />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2.5 sm:gap-3">
-              <button
-                type="button"
-                onClick={() => setActiveTab("register")}
-                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-slate-700 hover:text-blue-600 px-3 py-2 cursor-pointer transition-colors"
-              >
-                <Sparkles size={13} className="text-blue-600" />
-                <span>Register Profile</span>
-              </button>
-
-              <Link
-                href="/interview"
-                className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-[0.12em] shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-              >
-                <span>Start Interview</span>
-                <ArrowRight size={13} />
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* Mobile Hamburger Menu */}
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="lg:hidden flex items-center justify-center size-10 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-all cursor-pointer"
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </header>
-      </div>
-
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-white/95 backdrop-blur-md">
-          <div className="flex flex-col h-full px-6 py-4">
-            {/* Mobile Header */}
-            <div className="flex items-center justify-between mb-8">
-              <Link href="/" className="flex items-center gap-3 group" onClick={() => setMobileMenuOpen(false)}>
-                <div className="relative flex size-9 items-center justify-center rounded-xl bg-blue-50 border border-blue-200">
-                  <Hexagon size={22} className="stroke-[2.4] text-blue-600" />
-                  <div className="absolute size-2 rounded-full bg-blue-600" />
-                </div>
-                <span className="font-display text-base font-extrabold uppercase tracking-[0.25em] text-slate-900">
-                  Talent<span className="text-blue-600">IQ</span>
-                </span>
-              </Link>
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-center size-10 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all cursor-pointer"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            {/* Mobile Navigation */}
-            <nav className="flex flex-col gap-2">
-              <Link
-                href="/interview"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 font-bold text-sm hover:bg-blue-100 transition-all cursor-pointer"
-              >
-                <ClipboardList size={20} className="text-blue-600" />
-                <span>Assessment</span>
-              </Link>
-              <button
-                type="button"
-                onClick={() => { setTracksModalOpen(true); setMobileMenuOpen(false); }}
-                className="flex items-center gap-3 px-4 py-4 rounded-xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition-all cursor-pointer"
-              >
-                <Layers size={20} className="text-blue-600" />
-                <span>Interview Tracks</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => { setScoringModalOpen(true); setMobileMenuOpen(false); }}
-                className="flex items-center gap-3 px-4 py-4 rounded-xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition-all cursor-pointer"
-              >
-                <BarChart3 size={20} className="text-blue-600" />
-                <span>AI Scoring Rubric</span>
-              </button>
-              {isLoggedIn && (
-                <button
-                  type="button"
-                  onClick={() => { setUserModalOpen(true); setMobileMenuOpen(false); }}
-                  className="flex items-center gap-3 px-4 py-4 rounded-xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition-all cursor-pointer"
-                >
-                  <User size={20} className="text-blue-600" />
-                  <span>Candidate Dossier</span>
-                </button>
-              )}
-            </nav>
-
-            {/* Mobile Action Buttons */}
-            <div className="mt-auto pt-8 border-t border-slate-200">
+      {/* ================= TOP NAVIGATION BAR (PILL NAV) ================= */}
+      <header className="relative z-30 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-3">
+        <PillNav
+          logo="/suki-logo-cropped.png"
+          logoAlt="Suki Software Solutions"
+          className="bg-gradient-to-r from-blue-600 via-blue-950 to-black border border-white/15 rounded-[27px] px-2 py-2 shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl"
+          baseColor="linear-gradient(110deg, #2563eb 0%, #10275f 54%, #020617 100%)"
+          pillColor="rgba(255, 255, 255, 0.92)"
+          hoveredPillTextColor="#ffffff"
+          pillTextColor="#0f172a"
+          items={[
+            { label: 'Assessment', href: '/interview' },
+            { label: 'Tracks', href: '#', onClick: () => setTracksModalOpen(true) },
+            { label: 'Scoring rubric', href: '#', onClick: () => setScoringModalOpen(true) },
+            ...(isLoggedIn ? [{ label: 'Profile', href: '#', onClick: () => setUserModalOpen(true) }] : [])
+          ]}
+          mobileItems={[
+            ...(isLoggedIn ? [
+              { label: 'Launch Interview', href: '/interview' },
+              { label: 'Sign Out', href: '#', onClick: handleLogout }
+            ] : [
+              { label: 'Sign In', href: '#', onClick: () => {
+                setActiveTab('signin');
+                const el = document.getElementById('auth-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }},
+              { label: 'Register Candidate', href: '#', onClick: () => {
+                setActiveTab('register');
+                const el = document.getElementById('auth-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+            ])
+          ]}
+          rightContent={
+            <div className="hidden lg:flex items-center gap-3">
               {isLoggedIn ? (
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200">
-                    <div className="size-10 rounded-full bg-blue-600 text-white text-sm grid place-items-center font-bold">
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setUserModalOpen(true)}
+                    className="flex items-center gap-2.5 rounded-full border border-slate-200 bg-white shadow-md hover:bg-blue-50 px-3.5 py-2 text-xs font-bold text-slate-900 transition-all cursor-pointer shadow-xs"
+                  >
+                    <div className="size-6 rounded-full bg-gradient-to-br from-sky-400 to-blue-500 text-slate-900 text-[11px] grid place-items-center font-black shadow-xs">
                       {candidateDisplayName.charAt(0).toUpperCase()}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-900 truncate">{candidateDisplayName}</p>
-                      <p className="text-xs text-slate-500">Logged in</p>
-                    </div>
-                  </div>
+                    <span className="max-w-[130px] truncate font-semibold">{candidateDisplayName}</span>
+                  </button>
+
                   <Link
                     href="/interview"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 text-sm font-bold uppercase tracking-[0.12em] shadow-md shadow-blue-500/25 transition-all cursor-pointer"
+                    className="rounded-full bg-white hover:bg-slate-100 text-blue-900 px-5 py-2.5 text-sm font-bold shadow-sm flex items-center gap-2 transition-colors cursor-pointer"
                   >
-                    <span>Launch Interview</span>
-                    <ArrowRight size={18} />
+                    <span>Launch interview</span>
+                    <ArrowRight size={13} />
                   </Link>
+
                   <button
                     type="button"
-                    onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
-                    className="flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 text-slate-700 px-6 py-4 text-sm font-bold hover:bg-slate-50 transition-all cursor-pointer"
+                    onClick={handleLogout}
+                    title="Sign out"
+                    className="size-10 rounded-full border border-slate-200 bg-white shadow-md hover:bg-rose-500 hover:border-rose-400 hover:text-slate-900 flex items-center justify-center text-slate-900 transition-all cursor-pointer shadow-xs"
                   >
-                    <LogOut size={18} />
-                    <span>Sign Out</span>
+                    <LogOut size={14} />
                   </button>
-                </div>
+                </>
               ) : (
-                <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => { setActiveTab("register"); setMobileMenuOpen(false); }}
-                    className="flex items-center justify-center gap-2 rounded-xl border-2 border-blue-200 text-blue-700 px-6 py-4 text-sm font-bold hover:bg-blue-50 transition-all cursor-pointer"
+                    onClick={() => {
+                      setActiveTab('signin');
+                      const el = document.getElementById('auth-section');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="rounded-full bg-white hover:bg-slate-100 text-blue-900 px-6 py-2.5 text-sm font-bold shadow-sm flex items-center gap-2 transition-colors cursor-pointer"
                   >
-                    <Sparkles size={18} className="text-blue-600" />
-                    <span>Register Profile</span>
+                    <User size={15} />
+                    <span>Sign In</span>
                   </button>
-                  <Link
-                    href="/interview"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 text-sm font-bold uppercase tracking-[0.12em] shadow-md shadow-blue-500/25 transition-all cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('register');
+                      const el = document.getElementById('auth-section');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 text-sm font-bold shadow-sm flex items-center gap-2 transition-colors cursor-pointer"
                   >
-                    <span>Start Interview</span>
-                    <ArrowRight size={18} />
-                  </Link>
+
+                    <span>Register</span>
+                  </button>
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          }
+        />
+      </header>
+      {/* ================= MAIN CONTENT HERO & ACTION CONSOLE ================= */}
+      <main className="relative z-10 flex-1 flex items-center px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+        <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
 
-      {/* ================= MAIN CONTENT: LEFT INTRO / RIGHT WHITE & BLUE SIGN IN CARD ================= */}
-      <main className="relative z-10 flex-1 flex items-center px-6 sm:px-12 lg:px-20 py-10 lg:py-16">
-        <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          
-          {/* ================= LEFT SIDE: WELCOME & PLATFORM INTRO ================= */}
-          <div className="lg:col-span-6 space-y-7 lg:pr-6">
-            
-            {/* Headline */}
-            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.1]">
-              Welcome to <br />
-              <span className="text-blue-600">
-                TalentIQ Portal
+          {/* ================= LEFT SIDE: HERO & VALUE PROPOSITIONS ================= */}
+          <div className="lg:col-span-6 xl:col-span-7 space-y-6">
+
+            {/* Suki Software Solutions Hero Brand Showcase */}
+            <div className="inline-flex items-center gap-3.5 bg-white shadow-sm border border-slate-200 pl-3.5 pr-4 py-2 rounded-2xl shadow-lg backdrop-blur-xl">
+              <div className="bg-white px-2 py-1 rounded-lg">
+                <Image
+                  src="/suki-logo-cropped.png"
+                  alt="Suki Software Solutions"
+                  width={160}
+                  height={57}
+                  priority
+                  className="h-7 sm:h-8 w-auto object-contain"
+              />
+              </div>
+            </div>
+
+            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.12]">
+              Practice technical interviews with{" "}
+              <span className="bg-gradient-to-r from-sky-300 via-blue-300 to-white bg-clip-text text-transparent drop-shadow-md">
+                Suki Voice AI
               </span>
             </h1>
 
-            {/* Intro Paragraph */}
-            <p className="text-base sm:text-lg text-slate-700 leading-relaxed font-normal max-w-xl">
-              TalentIQ is a comprehensive practice, assignment, and voice interview platform designed to help new graduates and candidates enhance their technical depth, master real-time spoken communication, and prepare for premier career opportunities.
+            <p className="text-base sm:text-lg text-slate-100 leading-relaxed max-w-2xl font-medium drop-shadow-sm">
+              Run a realistic engineering interview over voice powered by Suki Software Solutions. Evaluates technical depth, problem solving, and spoken articulation, then returns a structured STAR scorecard.
             </p>
 
-            {/* Direct Action Link - Solid Non-Transparent High-Impact Button */}
-            <div className="pt-2">
+            {/* Value Proposition Pills Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
+              <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white shadow-sm border border-slate-200 shadow-lg backdrop-blur-md">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-slate-900 shrink-0">
+                  <Mic size={20} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">Natural voice</h4>
+                  <p className="text-xs text-slate-600">Conversational interview flow</p>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setScoringModalOpen(true)}
+                className="flex items-center gap-3 p-3.5 rounded-2xl bg-white shadow-sm border border-slate-200 shadow-lg backdrop-blur-md cursor-pointer hover:border-slate-300 hover:bg-white shadow-md transition-colors"
+              >
+                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-slate-900 shrink-0">
+                  <BarChart3 size={20} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">
+                    Four-pillar rubric
+                  </h4>
+                  <p className="text-xs text-slate-600">Code, speech, and architecture</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white shadow-sm border border-slate-200 shadow-lg backdrop-blur-md">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-slate-900 shrink-0">
+                  <FileCheck size={20} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">Scorecard</h4>
+                  <p className="text-xs text-slate-600">Instant strengths and gaps</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3.5 pt-3">
               <Link
                 href="/interview"
-                className="inline-flex items-center gap-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-base px-8 py-4 shadow-xl shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] border-2 border-blue-600 cursor-pointer"
+                className="inline-flex items-center gap-3 rounded-xl bg-white hover:bg-slate-100 text-blue-900 font-bold text-sm sm:text-base px-7 py-3.5 shadow-lg transition-colors cursor-pointer"
               >
-                <span>Launch Assessment</span>
-                <ArrowRight size={20} />
+                <span>Launch assessment</span>
+                <ArrowRight size={18} />
               </Link>
+
+              <button
+                type="button"
+                onClick={() => setScoringModalOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white shadow-md hover:bg-blue-50 text-slate-900 font-semibold text-sm sm:text-base px-6 py-3.5 shadow-lg backdrop-blur-md transition-colors cursor-pointer"
+              >
+                <BarChart3 size={18} className="text-sky-200" />
+                <span>Scoring rubric</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTracksModalOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white shadow-md hover:bg-blue-50 text-slate-900 font-medium text-sm px-5 py-3.5 shadow-lg backdrop-blur-md transition-colors cursor-pointer"
+              >
+                <Layers size={16} className="text-sky-200" />
+                <span>Browse tracks</span>
+              </button>
             </div>
 
           </div>
 
-          {/* ================= RIGHT SIDE: WHITE AND BLUE AUTH CARD ================= */}
-          <div className="lg:col-span-6 w-full max-w-[540px] mx-auto lg:ml-auto">
+          {/* ================= RIGHT SIDE: CANDIDATE PORTAL / AUTH CARD ================= */}
+          <div className="lg:col-span-6 xl:col-span-5 w-full max-w-[500px] mx-auto lg:ml-auto">
             {isLoggedIn && userData ? (
-              /* ================= LOGGED IN CANDIDATE DOSSIER CARD ================= */
-              <div className="rounded-[35px] border-2 border-blue-200 bg-white p-8 sm:p-10 shadow-2xl shadow-blue-950/10 text-slate-900">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-2 rounded-full bg-blue-600" />
-                    <h2 className="font-display text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                      Candidate Portal
-                    </h2>
+              /* ================= CANDIDATE READINESS CONSOLE (LOGGED IN) ================= */
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-7 sm:p-8 shadow-2xl backdrop-blur-xl text-slate-900">
+                <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-200">
+                  <div className="flex items-center gap-2.5">
+                    <div className="bg-white px-2 py-1 rounded-lg">
+                      <Image
+                        src="/suki-logo-cropped.png"
+                        alt="Suki Software Solutions"
+                        width={140}
+                        height={50}
+                        className="h-7 w-auto object-contain"
+                      />
+                    </div>
                   </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3.5 py-1.5 text-xs font-bold text-blue-700">
-                    <CheckCircle2 size={14} className="text-blue-600" /> Verified &amp; Synced
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-slate-300 px-3 py-1 text-[11px] font-semibold text-slate-900">
+                    <span className="size-1.5 rounded-full bg-sky-300" />
+                    Suki Verified
                   </span>
                 </div>
 
-                <div className="flex items-center gap-5 p-5 rounded-2xl bg-blue-50/80 border border-blue-200 mb-6">
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-white shadow-sm border border-slate-200 mb-6">
                   <div className="relative">
-                    <div className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-2xl shadow-md">
+                    <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 to-blue-500 text-slate-900 font-bold text-xl">
                       {candidateDisplayName.charAt(0).toUpperCase()}
                     </div>
-                    <div className="absolute -bottom-1 -right-1 grid size-6 place-items-center rounded-full bg-blue-600 text-white ring-2 ring-white">
-                      <Check size={14} className="stroke-[3]" />
+                    <div className="absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full bg-emerald-400 text-slate-900 ring-2 ring-slate-900">
+                      <Check size={12} className="stroke-[3]" />
                     </div>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-bold text-slate-900 text-lg truncate">
+                    <h3 className="font-bold text-slate-900 text-base truncate">
                       {candidateDisplayName}
                     </h3>
-                    <p className="text-sm text-blue-700 font-semibold truncate">
+                    <p className="text-xs text-sky-200 font-semibold truncate">
                       {userData.profession || "Full Stack Candidate"}
                     </p>
-                    <p className="text-xs text-slate-500 truncate mt-0.5">
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
                       {userData.email}
                     </p>
                   </div>
                 </div>
 
-                <div className="space-y-3 mb-6 text-sm text-slate-600">
-                  {userData.phone && (
-                    <div className="flex items-center justify-between py-2 border-b border-blue-50">
-                      <span className="font-medium text-slate-500 flex items-center gap-2">
-                        <Phone size={15} className="text-blue-600" /> Contact Phone:
-                      </span>
-                      <span className="font-bold text-slate-800">{userData.phone}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between py-2 border-b border-blue-50">
-                    <span className="font-medium text-slate-500 flex items-center gap-2">
-                      <GraduationCap size={15} className="text-blue-600" /> Education:
+                {/* Readiness Pre-Flight Checklist */}
+                <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 mb-6 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-200">
+                    <span className="text-slate-600 font-medium flex items-center gap-2">
+                      <Mic size={14} className="text-blue-600" /> Microphone Sensor:
                     </span>
-                    <span className="font-bold text-slate-800 truncate max-w-[220px]">
-                      {userData.education || "Bachelor's Degree"}
+                    <span className="font-bold text-emerald-400 flex items-center gap-1">
+                      <span className="size-1.5 rounded-full bg-emerald-400" /> Ready
                     </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-200">
+                    <span className="text-slate-600 font-medium flex items-center gap-2">
+                      <Layers size={14} className="text-blue-600" /> Target Track:
+                    </span>
+                    <span className="font-bold text-slate-900">Full Stack Engineering</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-600 font-medium flex items-center gap-2">
+                      <BarChart3 size={14} className="text-blue-600" /> Target Rubric:
+                    </span>
+                    <span className="font-bold text-sky-200">4 Objective Pillars (100%)</span>
                   </div>
                 </div>
 
+                {/* Primary Launch Action */}
                 <Link
                   href="/interview"
-                  className="w-full py-4 text-base font-bold text-white rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl shadow-blue-600/30 flex items-center justify-center gap-2.5 mb-3.5 transition-all hover:scale-[1.01] active:scale-[0.99]"
+                  className="w-full py-4 text-sm sm:text-base font-bold text-blue-900 rounded-xl bg-white hover:bg-slate-100 flex items-center justify-center gap-2.5 mb-3 transition-colors shadow-lg"
                 >
-                  <span>Launch Interview Directly</span>
+
+                  <span>Launch Live Interview Directly</span>
                   <ArrowRight size={18} />
                 </Link>
 
+                {/* View Dossier Action */}
                 <button
                   type="button"
                   onClick={() => setUserModalOpen(true)}
-                  className="w-full py-3.5 text-sm font-bold text-slate-800 rounded-2xl border-2 border-slate-200 bg-white hover:bg-slate-50 shadow-sm flex items-center justify-center gap-2 cursor-pointer mb-3 transition-all"
+                  className="w-full py-3 text-xs sm:text-sm font-bold text-slate-900 rounded-xl border border-slate-300 bg-white shadow-md hover:bg-blue-50 shadow-lg backdrop-blur-md flex items-center justify-center gap-2 cursor-pointer mb-4 transition-all"
                 >
-                  <User size={16} className="text-blue-600" />
-                  <span>View Complete Profile Dossier</span>
+                  <User size={15} className="text-blue-600" />
+                  <span>View Full Candidate Dossier</span>
                 </button>
 
-                <div className="pt-2 text-center">
+                <div className="text-center">
                   <button
                     onClick={handleLogout}
-                    className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:text-rose-600 hover:border-rose-200 shadow-sm transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-rose-400 transition-colors cursor-pointer"
                   >
-                    Switch candidate or sign out
+                    <LogOut size={13} />
+                    <span>Switch candidate or sign out</span>
                   </button>
                 </div>
               </div>
             ) : (
-              /* ================= TABBED AUTH & REGISTRATION CARD (WHITE AND BLUE) ================= */
-              <div className="rounded-[35px] border-2 border-blue-200 bg-white p-8 sm:p-10 shadow-2xl shadow-blue-950/10 text-slate-900">
-                {/* Segmented Tab Switcher (Solid Non-Transparent Buttons) */}
-                <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 border-2 border-blue-100 mb-7">
+              /* ================= TABBED AUTH & REGISTRATION CARD (LOGGED OUT) ================= */
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-7 sm:p-8 shadow-2xl backdrop-blur-xl text-slate-900">
+                <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-200">
+                  <div className="bg-white px-2 py-1 rounded-lg">
+                    <Image
+                      src="/suki-logo-cropped.png"
+                      alt="Suki Software Solutions"
+                      width={150}
+                      height={53}
+                      className="h-7 sm:h-8 w-auto object-contain"
+                    />
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                    Candidate Portal
+                  </span>
+                </div>
+
+                {/* Segmented Switcher */}
+                <div className="flex items-center gap-1 p-1 rounded-2xl bg-white shadow-sm border border-slate-200 mb-6">
                   <button
                     type="button"
                     onClick={() => setActiveTab("signin")}
-                    className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       activeTab === "signin"
-                        ? "bg-blue-600 text-white shadow-md border-2 border-blue-600"
-                        : "bg-white text-slate-800 hover:text-blue-600 border-2 border-slate-200 shadow-sm"
+                        ? "bg-blue-50 text-slate-900 shadow-md border border-slate-300 backdrop-blur-md"
+                        : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
                     <span>Sign In</span>
@@ -590,57 +657,62 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setActiveTab("register")}
-                    className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       activeTab === "register"
-                        ? "bg-blue-600 text-white shadow-md border-2 border-blue-600"
-                        : "bg-white text-slate-800 hover:text-blue-600 border-2 border-slate-200 shadow-sm"
+                        ? "bg-blue-50 text-slate-900 shadow-md border border-slate-300 backdrop-blur-md"
+                        : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
-                    <Sparkles size={14} className={activeTab === "register" ? "text-cyan-200" : "text-blue-600"} />
+
                     <span>Register Candidate</span>
                   </button>
                 </div>
 
+                {assessmentSignInPrompt && (
+                  <div role="status" className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-3 text-xs font-medium text-blue-900">
+                    Sign in or register to continue to the assessment. After you authenticate, we’ll take you to the launch screen.
+                  </div>
+                )}
+
                 {/* ================= SIGN IN TAB ================= */}
                 {activeTab === "signin" && (
                   <div>
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-2 rounded-full bg-blue-600" />
-                        <h2 className="font-display text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                          Sign In
+                    <div className="flex items-center justify-between mb-5">
+                      <div>
+                        <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                          Sign in
                         </h2>
+                        <p className="text-xs text-slate-600">Access saved profile and scorecards</p>
                       </div>
                       <button
                         type="button"
                         onClick={handleDemoLoginFill}
-                        className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1.5 transition-colors bg-white px-3.5 py-1.5 rounded-xl border-2 border-blue-200 shadow-sm cursor-pointer hover:bg-blue-50"
+                        className="text-xs font-bold text-slate-900 hover:text-slate-900 flex items-center gap-1.5 transition-colors bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl border border-slate-300 shadow-2xs cursor-pointer"
                       >
-                        <Sparkles size={13} className="text-blue-600" />
-                        Auto-fill Demo
+
+                        Demo Fill
                       </button>
                     </div>
 
                     {loginError && (
-                      <div className="mb-5 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs sm:text-sm font-semibold text-rose-800">
-                        <AlertCircle size={17} className="mt-0.5 shrink-0 text-rose-600" />
+                      <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-rose-500/50 bg-rose-500/10 p-3.5 text-xs font-semibold text-rose-200">
+                        <AlertCircle size={16} className="mt-0.5 shrink-0 text-rose-400" />
                         <p>{loginError}</p>
                       </div>
                     )}
 
-                    <form onSubmit={handleLoginSubmit} className="space-y-5">
-                      {/* Email / Mobile */}
+                    <form onSubmit={handleLoginSubmit} className="space-y-4">
                       <div>
                         <label
                           htmlFor="loginEmail"
-                          className="block text-xs sm:text-sm font-bold text-slate-700 mb-2"
+                          className="block text-xs font-bold text-slate-700 mb-1.5"
                         >
-                          Email/Mobile Number
+                          Email Address
                         </label>
                         <div className="relative">
                           <Mail
-                            size={18}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500"
+                            size={16}
+                            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500"
                           />
                           <input
                             id="loginEmail"
@@ -648,24 +720,23 @@ export default function Home() {
                             value={loginEmail}
                             onChange={(e) => setLoginEmail(e.target.value)}
                             placeholder="sedhuraman6677@gmail.com"
-                            className="w-full rounded-2xl border-2 border-blue-200 bg-blue-50/30 pl-11 pr-4 py-3.5 sm:py-4 text-sm font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-500/15"
+                            className="w-full rounded-xl border border-slate-200 bg-white shadow-sm pl-10 pr-3.5 py-3 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                             required
                           />
                         </div>
                       </div>
 
-                      {/* Password */}
                       <div>
                         <label
                           htmlFor="loginPassword"
-                          className="block text-xs sm:text-sm font-bold text-slate-700 mb-2"
+                          className="block text-xs font-bold text-slate-700 mb-1.5"
                         >
                           Password
                         </label>
                         <div className="relative">
                           <Lock
-                            size={18}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500"
+                            size={16}
+                            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500"
                           />
                           <input
                             id="loginPassword"
@@ -673,52 +744,45 @@ export default function Home() {
                             value={loginPassword}
                             onChange={(e) => setLoginPassword(e.target.value)}
                             placeholder="••••••••••"
-                            className="w-full rounded-2xl border-2 border-blue-200 bg-blue-50/30 pl-11 pr-12 py-3.5 sm:py-4 text-sm font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-500/15"
+                            className="w-full rounded-xl border border-slate-200 bg-white shadow-sm pl-10 pr-10 py-3 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                             required
                           />
                           <button
                             type="button"
                             onClick={() => setShowLoginPassword(!showLoginPassword)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors cursor-pointer"
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors cursor-pointer"
                           >
-                            {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                           </button>
                         </div>
                       </div>
 
-                      {/* Prominent High-Impact Blue Sign In Button */}
                       <button
                         type="submit"
                         disabled={loginLoading}
-                        className="w-full mt-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 py-4 text-base font-bold text-white shadow-xl shadow-blue-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                        className="w-full mt-2 rounded-xl bg-blue-600 hover:bg-blue-700 py-3.5 text-sm font-bold text-white shadow-lg transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center"
                       >
                         {loginLoading ? (
                           <span className="flex items-center justify-center gap-2">
-                            <div className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                            <SukiLoadingMark size={16} />
                             <span>Signing In...</span>
                           </span>
                         ) : (
-                          <span>Sign In</span>
+                          <span>Sign In to Console</span>
                         )}
                       </button>
                     </form>
 
-                    <div className="mt-6 space-y-2.5 pt-4 border-t border-blue-100 text-center">
-                      <p className="text-xs sm:text-sm text-slate-600">
-                        Don&apos;t have an account?{" "}
+                    <div className="mt-5 pt-4 border-t border-slate-200 text-center">
+                      <p className="text-xs text-slate-500">
+                        Need a new profile?{" "}
                         <button
                           type="button"
                           onClick={() => setActiveTab("register")}
-                          className="font-bold text-blue-600 hover:text-blue-800 underline underline-offset-2 cursor-pointer"
+                          className="font-bold text-blue-600 hover:text-sky-200 underline underline-offset-2 cursor-pointer"
                         >
-                          Register candidate profile &rarr;
+                          Register candidate here &rarr;
                         </button>
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        By signing in you agree to all our{" "}
-                        <span className="text-blue-600 font-semibold cursor-pointer hover:underline">
-                          terms &amp; conditions
-                        </span>
                       </p>
                     </div>
                   </div>
@@ -727,44 +791,41 @@ export default function Home() {
                 {/* ================= REGISTER TAB ================= */}
                 {activeTab === "register" && (
                   <div>
-                    <div className="flex items-center justify-between mb-5">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-2 rounded-full bg-blue-600" />
-                        <div>
-                          <h2 className="font-display text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                            Register Candidate
-                          </h2>
-                          <p className="text-xs text-slate-500">Stored permanently in MongoDB database</p>
-                        </div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                          Register
+                        </h2>
+                        <p className="text-xs text-slate-600">Synced directly to MongoDB</p>
                       </div>
                       <button
                         type="button"
                         onClick={handleDemoRegisterFill}
-                        className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1.5 transition-colors bg-white px-3.5 py-1.5 rounded-xl border-2 border-blue-200 shadow-sm cursor-pointer hover:bg-blue-50"
+                        className="text-xs font-bold text-slate-900 hover:text-slate-900 flex items-center gap-1.5 transition-colors bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl border border-slate-300 shadow-2xs cursor-pointer"
                       >
-                        <Sparkles size={13} className="text-blue-600" />
-                        Auto-fill Sample
+
+                        Sample Fill
                       </button>
                     </div>
 
                     {regError && (
-                      <div className="mb-4 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs sm:text-sm font-semibold text-rose-800">
-                        <AlertCircle size={16} className="mt-0.5 shrink-0 text-rose-600" />
+                      <div className="mb-3.5 flex items-start gap-2.5 rounded-xl border border-rose-500/50 bg-rose-500/10 p-3 text-xs font-semibold text-rose-200">
+                        <AlertCircle size={15} className="mt-0.5 shrink-0 text-rose-400" />
                         <p>{regError}</p>
                       </div>
                     )}
 
                     {regSuccess && (
-                      <div className="mb-4 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-3.5 text-xs sm:text-sm font-semibold text-blue-800">
-                        <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-blue-600" />
+                      <div className="mb-3.5 flex items-start gap-2.5 rounded-xl border border-emerald-500/50 bg-emerald-500/10 p-3 text-xs font-semibold text-emerald-200">
+                        <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-emerald-400" />
                         <p>{regSuccess}</p>
                       </div>
                     )}
 
-                    <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
-                      <div className="grid grid-cols-2 gap-3">
+                    <form onSubmit={handleRegisterSubmit} className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2.5">
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
                             First Name *
                           </label>
                           <input
@@ -772,12 +833,12 @@ export default function Home() {
                             value={regFirstName}
                             onChange={(e) => setRegFirstName(e.target.value)}
                             placeholder="Sedhu"
-                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                            className="w-full rounded-xl border border-slate-200 bg-white shadow-sm px-3 py-2 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                             required
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
                             Last Name *
                           </label>
                           <input
@@ -785,32 +846,32 @@ export default function Home() {
                             value={regLastName}
                             onChange={(e) => setRegLastName(e.target.value)}
                             placeholder="Raman"
-                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                            className="w-full rounded-xl border border-slate-200 bg-white shadow-sm px-3 py-2 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                             required
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
                           Email Address *
                         </label>
                         <div className="relative">
-                          <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-500" />
+                          <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                           <input
                             type="email"
                             value={regEmail}
                             onChange={(e) => setRegEmail(e.target.value)}
                             placeholder="sedhuraman6677@gmail.com"
-                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 pl-10 pr-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                            className="w-full rounded-xl border border-slate-200 bg-white shadow-sm pl-8 pr-3 py-2 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                             required
                           />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-2.5">
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
                             Mobile Phone
                           </label>
                           <input
@@ -818,11 +879,11 @@ export default function Home() {
                             value={regPhone}
                             onChange={(e) => setRegPhone(e.target.value)}
                             placeholder="+91 7338471266"
-                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                            className="w-full rounded-xl border border-slate-200 bg-white shadow-sm px-3 py-2 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
                             Target Profession
                           </label>
                           <input
@@ -830,14 +891,14 @@ export default function Home() {
                             value={regProfession}
                             onChange={(e) => setRegProfession(e.target.value)}
                             placeholder="Full Stack Engineer"
-                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                            className="w-full rounded-xl border border-slate-200 bg-white shadow-sm px-3 py-2 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                           />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-2.5">
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
                             Degree / Course
                           </label>
                           <input
@@ -845,11 +906,11 @@ export default function Home() {
                             value={regEducation}
                             onChange={(e) => setRegEducation(e.target.value)}
                             placeholder="B.Tech Computer Science"
-                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                            className="w-full rounded-xl border border-slate-200 bg-white shadow-sm px-3 py-2 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
                             University / College
                           </label>
                           <input
@@ -857,31 +918,31 @@ export default function Home() {
                             value={regUniversity}
                             onChange={(e) => setRegUniversity(e.target.value)}
                             placeholder="State University"
-                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                            className="w-full rounded-xl border border-slate-200 bg-white shadow-sm px-3 py-2 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
                           Password *
                         </label>
                         <div className="relative">
-                          <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-500" />
+                          <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                           <input
                             type={showRegPassword ? "text" : "password"}
                             value={regPassword}
                             onChange={(e) => setRegPassword(e.target.value)}
                             placeholder="Create secure password"
-                            className="w-full rounded-xl border-2 border-blue-200 bg-blue-50/30 pl-10 pr-10 py-2.5 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-600 focus:bg-white"
+                            className="w-full rounded-xl border border-slate-200 bg-white shadow-sm pl-8 pr-9 py-2 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                             required
                           />
                           <button
                             type="button"
                             onClick={() => setShowRegPassword(!showRegPassword)}
-                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors cursor-pointer"
                           >
-                            {showRegPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            {showRegPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                           </button>
                         </div>
                       </div>
@@ -889,26 +950,26 @@ export default function Home() {
                       <button
                         type="submit"
                         disabled={regLoading}
-                        className="w-full mt-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 py-3.5 text-sm sm:text-base font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                        className="w-full mt-2 rounded-xl bg-white hover:bg-slate-100 py-3 text-sm font-bold text-blue-900 shadow-lg transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center"
                       >
                         {regLoading ? (
                           <span className="flex items-center justify-center gap-2">
-                            <div className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                            <span>Registering in MongoDB Database...</span>
+                            <SukiLoadingMark size={16} />
+                            <span>Saving to Database...</span>
                           </span>
                         ) : (
-                          <span>Complete Registration &amp; Save to Database</span>
+                          <span>Complete Registration &amp; Save</span>
                         )}
                       </button>
                     </form>
 
-                    <div className="mt-4 pt-3 border-t border-blue-100 text-center">
-                      <p className="text-xs sm:text-sm text-slate-600">
+                    <div className="mt-4 pt-3 border-t border-slate-200 text-center">
+                      <p className="text-xs text-slate-500">
                         Already have an account?{" "}
                         <button
                           type="button"
                           onClick={() => setActiveTab("signin")}
-                          className="font-bold text-blue-600 hover:text-blue-800 underline underline-offset-2 cursor-pointer"
+                          className="font-bold text-blue-600 hover:text-sky-200 underline underline-offset-2 cursor-pointer"
                         >
                           Sign In here &rarr;
                         </button>
@@ -923,200 +984,363 @@ export default function Home() {
         </div>
       </main>
 
-      {/* ================= BOTTOM FOOTER (CLEAN WHITE & BLUE GLASS) ================= */}
-      <footer className="relative z-20 w-full px-6 sm:px-12 lg:px-20 py-5 border-t border-white/60 bg-white/70 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
-          <p>
-            Copyright &copy; {new Date().getFullYear()} TalentIQ Assessment Platform. All Rights Reserved.
-          </p>
-          <div className="flex items-center gap-4 text-slate-600">
+      <footer className="relative z-20 w-full px-4 sm:px-6 lg:px-8 py-5 bg-transparent">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-medium text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/suki-logo-cropped.png"
+              alt="Suki Software Solutions"
+              width={150}
+              height={53}
+              className="h-8 sm:h-9 w-auto object-contain brightness-0 invert drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+            />
+            <span className="hidden sm:inline text-white/45">|</span>
+            <div className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse" />
+              <span>Voice Interview Assessment Portal</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-white/90">
             <span>
-              Contact us:{" "}
-              <a href="tel:+917338471266" className="text-blue-600 font-semibold hover:underline">
+              Helpline:{" "}
+              <a href="tel:+917338471266" className="font-semibold text-sky-300 hover:text-white hover:underline">
                 +91-7338471266
               </a>
             </span>
-            <span className="text-blue-200">|</span>
-            <a href="mailto:help@talentiq.ai" className="text-blue-600 font-semibold hover:underline">
-              help@talentiq.ai
+            <span className="hidden sm:inline text-white/45">|</span>
+            <a href="mailto:contact@sukisoftwaresolutions.com" className="font-semibold text-sky-300 hover:text-white hover:underline">
+              contact@sukisoftwaresolutions.com
             </a>
+            <span className="hidden sm:inline text-white/45">|</span>
+            <span>&copy; {new Date().getFullYear()} Suki Software Solutions</span>
           </div>
         </div>
       </footer>
 
-      {/* User Details Dossier Modal */}
+
+      {/* ================= USER DETAILS DOSSIER MODAL ================= */}
       <UserDetailsModal
         open={userModalOpen}
         onClose={() => setUserModalOpen(false)}
         userDetails={userData}
       />
 
-      {/* ================= INTERVIEW TRACKS MODAL (WHITE & BLUE) ================= */}
-      {tracksModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-2xl rounded-[32px] border-2 border-blue-200 bg-white p-6 sm:p-8 shadow-2xl text-slate-900">
+      {/* ================= ENHANCED AI SCORING RUBRIC MODAL ================= */}
+      {scoringModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div className="relative w-full max-w-2xl rounded-3xl border border-blue-100 bg-white/95 backdrop-blur-2xl p-6 sm:p-8 shadow-2xl shadow-blue-950/20 text-slate-900 my-auto overflow-hidden">
+
+            {/* Header Ambient Glow */}
+            <div className="pointer-events-none absolute -top-24 -right-24 size-56 rounded-full bg-gradient-to-br from-blue-500/15 to-indigo-500/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 -left-24 size-56 rounded-full bg-gradient-to-tr from-cyan-500/15 to-blue-500/10 blur-3xl" />
+
+            {/* Close Button */}
             <button
-              onClick={() => setTracksModalOpen(false)}
-              className="absolute right-5 top-5 grid size-9 place-items-center rounded-full border border-blue-100 bg-blue-50 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors cursor-pointer"
+              onClick={() => setScoringModalOpen(false)}
+              className="absolute right-5 top-5 grid size-9 place-items-center rounded-xl border border-slate-200 bg-slate-50/80 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all cursor-pointer shadow-2xs"
+              aria-label="Close rubric modal"
             >
               <X size={18} />
             </button>
 
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex size-10 items-center justify-center rounded-2xl bg-blue-50 border border-blue-200 text-blue-600">
-                <Layers size={22} />
+            {/* Modal Title & Badges */}
+            <div className="flex items-start gap-4 mb-5 pb-4 border-b border-slate-100">
+              <div className="relative flex items-center justify-center rounded-2xl bg-white border border-slate-200/90 shadow-2xs shrink-0 px-3 py-2">
+                <Image
+                  src="/suki-logo-cropped.png"
+                  alt="Suki Software Solutions"
+                  width={150}
+                  height={53}
+                  className="h-9 sm:h-10 w-auto object-contain"
+                />
               </div>
               <div>
-                <h3 className="font-display text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                  Interview Practice Tracks
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-500 font-medium">
-                  Curated voice assessment domains designed for engineering roles
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-display text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                    AI Evaluation &amp; Scoring Rubric
+                  </h3>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-blue-700">
+                    <Zap size={10} className="fill-blue-600 text-blue-600" />
+                    100% Weight Sum
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+                  Objective criteria evaluated during your Suki Software Solutions live voice interview
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 my-6">
+            {/* Rubric Dimension Cards */}
+            <div className="space-y-3 my-5">
+              {rubricData.map((item, i) => {
+                const IconComponent = item.icon;
+                const isSelected = selectedRubricIndex === i;
+
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => setSelectedRubricIndex(isSelected ? null : i)}
+                    className={`rounded-2xl border transition-all duration-200 p-4 cursor-pointer ${
+                      isSelected
+                        ? "border-blue-300 bg-blue-50/40 shadow-sm"
+                        : "border-slate-200/90 bg-slate-50/40 hover:border-blue-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    {/* Item Header */}
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`flex size-8 items-center justify-center rounded-lg bg-gradient-to-br ${item.color} text-slate-900 shadow-xs`}
+                        >
+                          <IconComponent size={16} />
+                        </div>
+                        <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                          {item.label}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`font-black text-xs px-2.5 py-1 rounded-lg border ${item.accentBg}`}
+                        >
+                          {item.weightStr}
+                        </span>
+                        <ChevronRight
+                          size={15}
+                          className={`text-slate-400 transition-transform duration-200 ${
+                            isSelected ? "rotate-90 text-blue-600" : ""
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Progress Bar Visualizing Exact Rubric Weight */}
+                    <div className="w-full bg-slate-200/70 h-2 rounded-full overflow-hidden mb-2.5">
+                      <div
+                        className={`h-full rounded-full ${item.barColor} transition-all duration-500`}
+                        style={{ width: `${item.weight}%` }}
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                      {item.desc}
+                    </p>
+
+                    {/* Expandable Deep Breakdown / Signals */}
+                    {isSelected && (
+                      <div className="mt-3 pt-3 border-t border-blue-100/80 space-y-2 animate-fade-in">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                          Evaluated Signals:
+                        </div>
+                        <ul className="space-y-1">
+                          {item.keySignals.map((signal, sIdx) => (
+                            <li
+                              key={sIdx}
+                              className="text-xs text-slate-700 flex items-start gap-2"
+                            >
+                              <CheckCircle2
+                                size={13}
+                                className="text-emerald-500 shrink-0 mt-0.5"
+                              />
+                              <span>{signal}</span>
+                            </li>
+                          ))}
+                        </ul>
+
+                        {/* Practical Tip */}
+                        <div className="flex items-start gap-2 p-2.5 rounded-xl bg-blue-100/60 text-blue-950 text-[11px] font-medium mt-2">
+                          <Info size={14} className="text-blue-600 shrink-0 mt-0.5" />
+                          <span>
+                            <strong>AI Pro-tip:</strong> {item.tip}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer Summary & CTAs */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+
+                <span>Personalized STAR scorecard generated upon completion</span>
+              </div>
+              <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setScoringModalOpen(false)}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Close
+                </button>
+                <Link
+                  href="/interview"
+                  onClick={() => setScoringModalOpen(false)}
+                  className="w-full sm:w-auto rounded-xl bg-blue-600 hover:bg-blue-700 text-slate-900 font-semibold text-xs px-5 py-2.5 shadow-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <ClipboardList size={14} />
+                  <span>Start Assessment</span>
+                </Link>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ================= INTERVIEW TRACKS MODAL ================= */}
+      {tracksModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div className="relative w-full max-w-4xl rounded-3xl border border-blue-100 bg-white/95 backdrop-blur-2xl p-6 sm:p-8 shadow-2xl shadow-blue-950/20 text-slate-900 my-auto overflow-hidden">
+
+            {/* Header Ambient Glow */}
+            <div className="pointer-events-none absolute -top-24 -right-24 size-60 rounded-full bg-blue-500/15 blur-3xl" />
+
+            <button
+              onClick={() => setTracksModalOpen(false)}
+              className="absolute right-5 top-5 grid size-9 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all cursor-pointer shadow-2xs"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-100">
+              <div className="relative flex items-center justify-center rounded-2xl bg-white border border-slate-200/90 shadow-2xs p-2">
+                <Image
+                  src="/suki-logo-cropped.png"
+                  alt="Suki Software Solutions"
+                  width={150}
+                  height={53}
+                  className="h-9 sm:h-10 w-auto object-contain"
+                />
+              </div>
+              <div>
+                <h3 className="font-display text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  Engineering Practice Tracks
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium">
+                  Curated voice assessment tracks calibrated for technical roles at Suki Software Solutions
+                </p>
+              </div>
+            </div>
+
+            {/* Track Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
               {[
                 {
                   title: "Full Stack Engineer",
-                  tags: "React • Next.js • Node • DB",
-                  desc: "Comprehensive assessment covering client architecture, backend APIs, and system design.",
+                  icon: Code2,
+                  tags: "React • Next.js • Node • Databases",
+                  desc: "Comprehensive assessment covering client architecture, backend APIs, data modeling, and end-to-end system design.",
                   level: "Mid to Senior",
+                  questions: "5 Scenarios",
+                  duration: "~15 mins",
+                  color: "from-blue-600 to-indigo-600",
                 },
                 {
                   title: "Frontend Specialist",
-                  tags: "UI/UX • TypeScript • Performance",
-                  desc: "Deep-dive into component lifecycle, rendering optimization, state, and browser APIs.",
+                  icon: Mic,
+                  tags: "UI/UX • TypeScript • Web Performance",
+                  desc: "Deep-dive into component lifecycle, rendering optimization, state machines, accessibility, and modern browser APIs.",
                   level: "All Levels",
+                  questions: "5 Scenarios",
+                  duration: "~15 mins",
+                  color: "from-cyan-500 to-blue-600",
                 },
                 {
-                  title: "Backend & Cloud",
-                  tags: "APIs • Microservices • MongoDB",
-                  desc: "Distributed systems, database indexing, caching strategies, and RESTful contract design.",
+                  title: "Backend & Distributed Systems",
+                  icon: Server,
+                  tags: "APIs • Microservices • MongoDB • Caching",
+                  desc: "Distributed consistency, indexing strategies, rate limiting, pub/sub pipelines, and RESTful contract design.",
                   level: "Mid to Senior",
+                  questions: "5 Scenarios",
+                  duration: "~15 mins",
+                  color: "from-violet-600 to-purple-600",
                 },
                 {
-                  title: "Behavioral & Leadership",
-                  tags: "STAR Method • Communication",
-                  desc: "Situational scenarios, conflict resolution, project management, and cross-team empathy.",
-                  level: "All Roles",
+                  title: "Behavioral & Engineering Leadership",
+                  icon: Users,
+                  tags: "STAR Method • Conflict • Mentorship",
+                  desc: "Situational scenarios, architectural debates, cross-team empathy, delivery deadlines, and crisis retrospectives.",
+                  level: "All Levels",
+                  questions: "5 Scenarios",
+                  duration: "~15 mins",
+                  color: "from-emerald-500 to-teal-600",
                 },
               ].map((track, i) => (
                 <div
                   key={i}
-                  className="rounded-2xl border-2 border-blue-100 bg-blue-50/40 p-4 transition-all hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm"
+                  className="group relative rounded-2xl border border-slate-200/90 bg-slate-50/40 p-5 transition-all duration-300 hover:border-blue-300 hover:bg-white hover:shadow-lg hover:shadow-blue-500/10 flex flex-col justify-between"
                 >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <h4 className="font-bold text-slate-900 text-sm">{track.title}</h4>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-md">
-                      {track.level}
-                    </span>
+                  <div>
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`flex size-11 items-center justify-center rounded-xl bg-gradient-to-br ${track.color} text-slate-900 shadow-xs`}
+                        >
+                          <track.icon size={22} />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-900 text-sm sm:text-base">
+                            {track.title}
+                          </h4>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
+                              {track.level}
+                            </span>
+                            <span className="text-[11px] text-slate-400 font-medium">
+                              {track.questions} • {track.duration}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] font-bold text-blue-600 mb-2 flex items-center gap-1.5">
+                      <span className="size-1.5 rounded-full bg-blue-500" />
+                      {track.tags}
+                    </p>
+                    <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                      {track.desc}
+                    </p>
                   </div>
-                  <p className="text-xs text-blue-700 font-semibold mb-2">{track.tags}</p>
-                  <p className="text-xs text-slate-600 leading-relaxed mb-3">{track.desc}</p>
+
                   <Link
                     href="/interview"
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800"
+                    onClick={() => setTracksModalOpen(false)}
+                    className="inline-flex items-center justify-between w-full p-2.5 rounded-xl bg-blue-50/70 hover:bg-blue-600 text-blue-700 hover:text-slate-900 font-bold text-xs transition-all group-hover:shadow-xs"
                   >
-                    <span>Select &amp; Launch</span>
-                    <ArrowRight size={13} />
+                    <span>Select &amp; Launch Track</span>
+                    <ArrowRight size={14} />
                   </Link>
                 </div>
               ))}
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-blue-100">
-              <span className="text-xs text-slate-500 font-medium">All tracks powered by real-time AI speech evaluation</span>
+            {/* Footer */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <CheckCircle2 size={16} className="text-emerald-500" />
+                <span>All tracks powered by real-time voice latency &lt;300ms</span>
+              </div>
               <Link
                 href="/interview"
-                className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider px-5 py-2.5 shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+                onClick={() => setTracksModalOpen(false)}
+                className="w-full sm:w-auto rounded-xl bg-blue-600 hover:bg-blue-700 text-slate-900 font-semibold text-xs px-6 py-2.5 shadow-sm flex items-center justify-center gap-2 transition-colors"
               >
-                <ClipboardList size={14} />
+                <ClipboardList size={15} />
                 <span>Launch Assessment</span>
               </Link>
             </div>
+
           </div>
         </div>
       )}
 
-      {/* ================= AI SCORING RUBRIC MODAL (WHITE & BLUE) ================= */}
-      {scoringModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-xl rounded-[32px] border-2 border-blue-200 bg-white p-6 sm:p-8 shadow-2xl text-slate-900">
-            <button
-              onClick={() => setScoringModalOpen(false)}
-              className="absolute right-5 top-5 grid size-9 place-items-center rounded-full border border-blue-100 bg-blue-50 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors cursor-pointer"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex size-10 items-center justify-center rounded-2xl bg-blue-50 border border-blue-200 text-blue-600">
-                <BarChart3 size={22} />
-              </div>
-              <div>
-                <h3 className="font-display text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                  AI Evaluation &amp; Scoring Rubric
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-500 font-medium">
-                  Objective criteria evaluated during your live voice interview
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3.5 my-6">
-              {[
-                {
-                  label: "Technical Depth & Precision",
-                  weight: "35%",
-                  desc: "Correctness of algorithmic solutions, architectural reasoning, and domain knowledge.",
-                  bar: "w-[35%]",
-                },
-                {
-                  label: "Spoken Articulation & Clarity",
-                  weight: "25%",
-                  desc: "Crisp voice transmission, concise structure (STAR format), and minimal filler words.",
-                  bar: "w-[25%]",
-                },
-                {
-                  label: "Problem Solving & Trade-offs",
-                  weight: "25%",
-                  desc: "Logical breakdown of ambiguity, alternative considerations, and scalability focus.",
-                  bar: "w-[25%]",
-                },
-                {
-                  label: "Executive Presence & Confidence",
-                  weight: "15%",
-                  desc: "Steady speaking cadence, professional communication, and solution ownership.",
-                  bar: "w-[15%]",
-                },
-              ].map((item, i) => (
-                <div key={i} className="rounded-xl border border-blue-100 bg-blue-50/30 p-3.5">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-slate-800 text-xs sm:text-sm">{item.label}</span>
-                    <span className="font-extrabold text-blue-600 text-xs bg-blue-100 px-2 py-0.5 rounded-md">
-                      {item.weight}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-600">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-between pt-4 border-t border-blue-100">
-              <span className="text-xs text-slate-500 font-medium">Comprehensive scorecard generated upon completion</span>
-              <Link
-                href="/interview"
-                className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider px-5 py-2.5 shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
-              >
-                <ClipboardList size={14} />
-                <span>Start Assessment</span>
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

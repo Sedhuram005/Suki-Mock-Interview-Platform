@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CheckCircle2, Clock, Download, Info, Loader2, Timer, WifiOff, Mic, User, Video } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, Info, Timer, WifiOff, Mic, User, Video } from "lucide-react";
 import { questions } from "@/lib/questions";
 import { getDeviceInfo } from "@/lib/deviceInfo";
 import { btnPrimary, btnSecondary, card } from "@/lib/ui";
@@ -12,6 +12,9 @@ import Sidebar, { STEPS } from "@/components/Sidebar";
 import ErrorNote from "@/components/ErrorNote";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import UserDetailsModal, { type UserDetails } from "@/components/UserDetailsModal";
+import { startPageLoad } from "@/lib/page-loader";
+import SukiLoadingMark from "@/components/SukiLoadingMark";
+import SukiPageLoader from "@/components/SukiPageLoader";
 
 const fmtTime = (s: number) =>
   `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -23,12 +26,14 @@ type InterviewAnswerResult = {
   language?: string;
   confidence?: number | null;
   needsReview?: boolean;
-  translationStatus?: "pending" | "done" | "failed";
+  translationStatus?: "pending" | "done" | "needs_review" | "failed";
+  audioUrl?: string | null;
   videoUrl?: string | null;
 };
 
 export default function InterviewPage() {
   const router = useRouter();
+  const [authReady, setAuthReady] = useState(false);
   const [name, setName] = useState("");
   const [interviewId, setInterviewId] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -36,6 +41,9 @@ export default function InterviewPage() {
   const [answer, setAnswer] = useState<AnswerData>({ blob: null, videoBlob: null });
   const [results, setResults] = useState<InterviewAnswerResult[]>([]);
   const [busy, setBusy] = useState(false);
+  const [retryingQuestionId, setRetryingQuestionId] = useState<number | null>(null);
+  const [progressMessage, setProgressMessage] = useState("");
+  const [latestTranscript, setLatestTranscript] = useState<{ questionText: string; text: string } | null>(null);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -63,6 +71,7 @@ export default function InterviewPage() {
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("userData");
     localStorage.removeItem("userEmail");
+    startPageLoad();
     router.push("/");
   };
 
@@ -186,7 +195,8 @@ export default function InterviewPage() {
     const timeout = window.setTimeout(() => {
       const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
       if (!isLoggedIn) {
-        router.replace("/");
+        startPageLoad();
+        router.replace("/?next=%2Finterview");
         return;
       }
 
@@ -205,6 +215,7 @@ export default function InterviewPage() {
           console.error("Error parsing user data", err);
         }
       }
+      setAuthReady(true);
     }, 0);
 
     return () => window.clearTimeout(timeout);
@@ -287,6 +298,7 @@ export default function InterviewPage() {
     if (!blob || !videoBlob || !interviewId) return;
     setBusy(true);
     setError("");
+    setProgressMessage("Saving your original audio and video…");
     try {
       const form = new FormData();
       form.set("interviewId", interviewId);
@@ -304,22 +316,40 @@ export default function InterviewPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setAnswer({ blob: null, videoBlob: null });
+      if (isLast) stream?.getTracks().forEach((track) => track.stop());
+
+      setProgressMessage("Converting your speech to English on this machine…");
+      let translatedAnswers: InterviewAnswerResult[] = [];
+      let extractionError = "";
+      try {
+        const params = new URLSearchParams({
+          interviewId,
+          questionId: String(current.id),
+        });
+        const resultsResponse = await fetch(`/api/interview/results?${params.toString()}`, { cache: "no-store" });
+        const resultsData = await resultsResponse.json();
+        if (!resultsResponse.ok) throw new Error(resultsData.error || "Local English translation could not be loaded.");
+        translatedAnswers = Array.isArray(resultsData.answers) ? resultsData.answers : [];
+        setResults(translatedAnswers);
+      } catch (translationError) {
+        extractionError = translationError instanceof Error
+          ? translationError.message
+          : "The local English translation could not be loaded.";
+      }
+
+      const translatedCurrentAnswer = translatedAnswers.find((item) => item.questionId === current.id);
+      if (translatedCurrentAnswer?.translationStatus === "done" && translatedCurrentAnswer.englishText) {
+        setLatestTranscript({ questionText: current.text, text: translatedCurrentAnswer.englishText });
+        setProgressMessage("English transcript saved.");
+      } else {
+        setProgressMessage("Original audio and video saved; English translation needs a retry.");
+        setError(
+          extractionError ||
+          "Your audio and video were saved, but local Whisper could not translate this answer. Start the local Whisper service and retry from results.",
+        );
+      }
+
       if (isLast) {
-        stream?.getTracks().forEach((t) => t.stop());
-        try {
-          const resultsResponse = await fetch(`/api/interview/results?interviewId=${encodeURIComponent(interviewId)}`);
-          const resultsData = await resultsResponse.json();
-          if (!resultsResponse.ok) throw new Error(resultsData.error || "Could not load English results.");
-          const translatedAnswers: InterviewAnswerResult[] = Array.isArray(resultsData.answers)
-            ? resultsData.answers
-            : [];
-          setResults(translatedAnswers);
-          if (translatedAnswers.some((item) => item.translationStatus !== "done")) {
-            setError("Your audio and video were saved, but some English translations could not be generated. They can be retried later.");
-          }
-        } catch {
-          setError("Your audio and video were saved, but English results could not be loaded. Retry them from the results endpoint later.");
-        }
         setDone(true);
       } else {
         setIndex((i) => i + 1);
@@ -339,36 +369,42 @@ export default function InterviewPage() {
   const restart = () => {
     setName(""); setInterviewId(null); setStream(null);
     setIndex(0); setAnswer({ blob: null, videoBlob: null }); setResults([]);
-    setError(""); setDone(false); setElapsed(0);
+    setError(""); setDone(false); setElapsed(0); setProgressMessage(""); setLatestTranscript(null);
+  };
+
+  const retryTranslation = async (questionId: number) => {
+    if (!interviewId || retryingQuestionId !== null) return;
+    setRetryingQuestionId(questionId);
+    setError("");
+    try {
+      const params = new URLSearchParams({
+        interviewId,
+        questionId: String(questionId),
+        refresh: "1",
+      });
+      const response = await fetch(`/api/interview/results?${params.toString()}`, { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Could not retry the English translation.");
+      const freshAnswers: InterviewAnswerResult[] = Array.isArray(payload.answers) ? payload.answers : [];
+      setResults(freshAnswers);
+      const answerResult = freshAnswers.find((item) => item.questionId === questionId);
+      if (answerResult?.translationStatus === "needs_review" || answerResult?.needsReview) {
+        setError("The local Whisper model could not produce a dependable English translation. The original recording is safe; switch to a stronger multilingual model, then retry.");
+      } else if (answerResult?.translationStatus !== "done" || !answerResult.englishText) {
+        setError("Local Whisper could not translate that answer. Check that the local service is running, then retry.");
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not retry the English translation.");
+    } finally {
+      setRetryingQuestionId(null);
+    }
   };
 
   const refId = interviewId ? interviewId.slice(-8).toUpperCase() : null;
   const answered = done ? questions.length : index;
   const StepIcon = STEPS[stepIndex].icon;
 
-  const downloadTranscript = () => {
-    const lines = [
-      `Assessment: ${name}`,
-      `Reference ID: ${refId}`,
-      `Time taken: ${fmtTime(elapsed)}`,
-      "",
-      ...results.flatMap((item, i) => [
-        `Q${i + 1}. ${item.questionText}`,
-        item.englishText?.trim() || "(English translation unavailable)",
-        item.language && !["en", "english"].includes(item.language.toLowerCase())
-          ? `Translated from ${item.language}`
-          : "",
-        item.needsReview ? "Needs review" : "",
-        "",
-      ]),
-    ];
-    const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/plain" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `interview-${refId}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  if (!authReady) return <SukiPageLoader caption="Checking sign-in" />;
 
   return (
     <div className="flex h-screen overflow-hidden bg-white text-slate-900">
@@ -386,27 +422,27 @@ export default function InterviewPage() {
         onLogout={handleLogout}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-20 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-8 transition-all duration-300">
+      <div className="flex min-w-0 flex-1 flex-col m-3 lg:ml-0 rounded-[28px] border border-slate-200 bg-white overflow-hidden">
+        <header className="flex h-20 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-8">
           <div className="flex items-center gap-4">
-            <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25">
+            <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white">
               <StepIcon size={24} />
             </div>
             <div>
-              <h1 className="font-display text-lg font-bold text-slate-900 sm:text-xl">{STEPS[stepIndex]?.fullLabel || "Assessment"}</h1>
+              <h1 className="font-display text-lg font-semibold text-slate-900 sm:text-xl">{STEPS[stepIndex]?.fullLabel || "Assessment"}</h1>
               <p className="text-xs text-slate-500">Stage {stepIndex + 1} of {STEPS.length}</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {interviewId && (
-              <div className="flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2 text-sm font-bold tabular-nums text-slate-700 shadow-sm">
+              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold tabular-nums text-slate-700">
                 <Clock size={16} className="text-blue-600" />
                 {fmtTime(elapsed)}
               </div>
             )}
             <button
               onClick={handleLogout}
-              className="hidden sm:flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-800 shadow-sm transition-all duration-300 hover:bg-slate-100 hover:border-slate-300 cursor-pointer"
+              className="hidden sm:flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 hover:border-slate-300 cursor-pointer"
               title="Logout"
             >
               <User size={16} />
@@ -414,7 +450,7 @@ export default function InterviewPage() {
             </button>
             <button
               onClick={() => setUserModalOpen(true)}
-              className="flex size-11 items-center justify-center rounded-2xl bg-white text-blue-900 border-2 border-blue-300 text-sm font-black shadow-md transition-all duration-300 hover:scale-105 hover:bg-blue-50 cursor-pointer"
+              className="flex size-11 items-center justify-center rounded-2xl bg-blue-600 text-white text-sm font-black shadow-md transition hover:bg-blue-700 cursor-pointer"
               title="View your profile"
             >
               {name.trim() ? name.trim()[0].toUpperCase() : "C"}
@@ -422,8 +458,8 @@ export default function InterviewPage() {
           </div>
         </header>
         
-        <div className="h-1 bg-slate-200 lg:hidden">
-          <div className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-500" style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }} />
+        <div className="h-1 bg-slate-100 lg:hidden">
+          <div className="h-full bg-blue-600 transition-all duration-500" style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }} />
         </div>
 
         {!online && (
@@ -432,12 +468,12 @@ export default function InterviewPage() {
           </div>
         )}
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-white">
           <div className="mx-auto max-w-7xl p-4 sm:p-8">
             {/* Stage 1: Audio and video calibration */}
             {stepIndex === 0 && (
               <div className="fade-up mx-auto max-w-xl">
-                <div className={`${card} p-8 sm:p-10 shadow-xl`}>
+                <div className={`${card} p-8 sm:p-10`}>
                   <MicPermission onGranted={setStream} onContinue={startInterview} continuing={busy} />
                   {error && <ErrorNote>{error}</ErrorNote>}
                 </div>
@@ -447,10 +483,10 @@ export default function InterviewPage() {
             {/* Stage 2: Audio and video assessment */}
             {stepIndex === 1 && (
               <div className="grid gap-8 xl:grid-cols-[1fr_350px]">
-                <section key={current.id} className={`${card} fade-up overflow-hidden shadow-xl`}>
-                  <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 px-8 py-4">
+                <section key={current.id} className={`${card} fade-up overflow-hidden`}>
+                  <div className="flex items-center justify-between border-b border-slate-100 bg-white px-8 py-4">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Section A · Screening</span>
-                    <span className="rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 px-4 py-1.5 text-xs font-bold text-white shadow-md shadow-blue-500/25">
+                    <span className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-bold text-white">
                       Question {index + 1} of {questions.length}
                     </span>
                   </div>
@@ -462,6 +498,12 @@ export default function InterviewPage() {
                     >
                       {current.text}
                     </h2>
+                    {latestTranscript && (
+                      <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4" role="status" aria-live="polite">
+                        <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">Previous answer · English transcript</p>
+                        <p className="mt-2 text-sm leading-relaxed text-emerald-950">{latestTranscript.text}</p>
+                      </div>
+                    )}
                     <div className="mt-4 flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700">
                       <Timer size={18} className="text-blue-600" />
                       Suggested answer time: 30 to 60 seconds
@@ -510,9 +552,9 @@ export default function InterviewPage() {
                     </div>
                     {error && <ErrorNote>{error}</ErrorNote>}
                   </div>
-                  <div className="flex flex-col-reverse gap-4 border-t border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 px-8 py-6 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col-reverse gap-4 border-t border-slate-100 bg-white px-8 py-6 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm text-slate-600" aria-live="polite">
-                      {!online ? "Offline: reconnect to continue." : answer.blob ? "Answer ready to save." : "Record your answer to continue."}
+                      {!online ? "Offline: reconnect to continue." : busy ? progressMessage : progressMessage || (answer.blob ? "Answer ready to save." : "Record your answer to continue.")}
                     </p>
                     <button
                       onClick={isLast ? () => setConfirmOpen(true) : next}
@@ -520,7 +562,7 @@ export default function InterviewPage() {
                       className={`${btnPrimary} px-8 py-3 text-base shadow-lg shadow-blue-500/25 hover:shadow-blue-500/30`}
                     >
                       {busy && !confirmOpen ? (
-                        <><Loader2 size={18} className="animate-spin" /> Saving...</>
+                        <><SukiLoadingMark size={18} /> Processing...</>
                       ) : isLast ? (
                         "Review and submit"
                       ) : (
@@ -531,7 +573,7 @@ export default function InterviewPage() {
                 </section>
 
                 <aside className="space-y-6">
-                  <div className={`${card} p-6 shadow-lg`}>
+                  <div className={`${card} p-6`}>
                     <h3 className="text-sm font-bold text-slate-900">Question Palette</h3>
                     <div className="mt-4 grid grid-cols-5 gap-2">
                       {questions.map((q, i) => (
@@ -565,7 +607,7 @@ export default function InterviewPage() {
                       <li className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-slate-300" /> Not visited</li>
                     </ul>
                   </div>
-                  <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-6 shadow-lg">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
                     <h3 className="flex items-center gap-2 text-sm font-bold text-blue-900">
                       <Info size={18} className="text-blue-600" /> Guidelines
                     </h3>
@@ -589,12 +631,12 @@ export default function InterviewPage() {
             {/* Completion */}
             {done && (
               <div className={`${card} fade-up mx-auto max-w-4xl overflow-hidden shadow-2xl`}>
-                <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 px-8 py-12 text-center text-white">
-                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm shadow-2xl">
+                <div className="border-b border-slate-200 bg-white px-8 py-12 text-center">
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
                     <CheckCircle2 size={40} />
                   </div>
-                  <h2 className="font-display mt-6 text-3xl font-bold">Assessment Submitted</h2>
-                  <p className="mt-2 text-lg text-blue-100">
+                  <h2 className="font-display mt-6 text-3xl font-bold text-slate-900">Assessment submitted</h2>
+                  <p className="mt-2 text-lg text-slate-600">
                     Thank you, {name}. Your responses have been recorded successfully.
                   </p>
                 </div>
@@ -613,11 +655,8 @@ export default function InterviewPage() {
                 </dl>
                 <div className="p-8">
                   {error && <ErrorNote>{error}</ErrorNote>}
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="mb-6">
                     <h3 className="font-display text-xl font-bold text-slate-900">Your Responses</h3>
-                    <button onClick={downloadTranscript} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-300 hover:shadow-blue-500/30 hover:scale-105">
-                      <Download size={18} /> Download Transcript
-                    </button>
                   </div>
                   <ul className="space-y-4">
                     {results.map((item, i) => (
@@ -640,7 +679,25 @@ export default function InterviewPage() {
                         {item.translationStatus === "done" && item.englishText ? (
                           <p className="text-sm leading-relaxed text-slate-700">{item.englishText}</p>
                         ) : (
-                          <p role="status" className="text-sm text-amber-800">English translation unavailable. The audio and video are saved and can be retried later.</p>
+                          <div>
+                            {item.englishText && (
+                              <p className="mb-2 text-sm leading-relaxed text-slate-700">{item.englishText}</p>
+                            )}
+                            <p role="status" className="text-sm text-amber-800">
+                              {item.translationStatus === "needs_review" || item.needsReview
+                                ? "The local model could not produce a dependable English translation. The original recording is saved."
+                                : "English translation unavailable. The original recording is saved."}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => void retryTranslation(item.questionId)}
+                              disabled={retryingQuestionId !== null}
+                              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-50 disabled:opacity-60"
+                            >
+                              {retryingQuestionId === item.questionId && <SukiLoadingMark size={16} />}
+                              Retry English translation
+                            </button>
+                          </div>
                         )}
                         {item.videoUrl && (
                           <video
@@ -651,11 +708,19 @@ export default function InterviewPage() {
                             aria-label={`Recorded video for question ${i + 1}`}
                           />
                         )}
+                        {item.audioUrl && (
+                          <audio
+                            className="mt-3 w-full"
+                            src={item.audioUrl}
+                            controls
+                            aria-label={`Original audio for question ${i + 1}`}
+                          />
+                        )}
                       </li>
                     ))}
                   </ul>
                 </div>
-                <div className="flex flex-col justify-center gap-4 border-t border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 px-8 py-6 sm:flex-row">
+                <div className="flex flex-col justify-center gap-4 border-t border-slate-100 bg-white px-8 py-6 sm:flex-row">
                   <Link href="/" className={`${btnSecondary} px-8 py-3 text-base`}>Back to home</Link>
                   <button onClick={restart} className={`${btnPrimary} px-8 py-3 text-base shadow-lg shadow-blue-500/25 hover:shadow-blue-500/30`}>Start another assessment</button>
                 </div>
