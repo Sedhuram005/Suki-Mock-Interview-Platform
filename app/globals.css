@@ -210,6 +210,23 @@ body {
   mix-blend-mode: screen;
 }
 
+@keyframes suki-logo-pulse {
+  0%,
+  100% {
+    opacity: 0.78;
+    transform: scale(0.97);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+.suki-loader-wordmark {
+  animation: suki-logo-pulse 1.6s ease-in-out infinite;
+  transform-origin: center center;
+}
+
 /* Hide Next.js dev tools indicator badge */
 [data-nextjs-dev-tools-button],
 [data-nextjs-toast],

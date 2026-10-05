@@ -1,4 +1,4 @@
-import SukiLoadingMark from "@/components/SukiLoadingMark";
+import Image from "next/image";
 
 export default function SukiPageLoader({
   caption = "Loading",
@@ -11,7 +11,14 @@ export default function SukiPageLoader({
       role="status"
       aria-live="polite"
     >
-      <SukiLoadingMark size={168} className="h-32 w-32 sm:h-36 sm:w-36" />
+      <Image
+        src="/suki-logo-hq-transparent.png"
+        alt="Suki Software Solutions"
+        width={800}
+        height={284}
+        priority
+        className="suki-loader-wordmark h-auto w-56 object-contain sm:w-64"
+      />
       <p className="mt-6 text-sm font-semibold tracking-[0.22em] text-slate-600 uppercase">
         {caption}
       </p>

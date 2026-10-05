@@ -669,8 +669,48 @@ export default function Home() {
                 </div>
 
                 {assessmentSignInPrompt && (
-                  <div role="status" className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-3 text-xs font-medium text-blue-900">
-                    Sign in or register to continue to the assessment. After you authenticate, we’ll take you to the launch screen.
+                  <div
+                    role="region"
+                    aria-labelledby="assessment-access-title"
+                    aria-live="polite"
+                    className="mb-5 overflow-hidden rounded-2xl border border-blue-200/80 bg-white shadow-md shadow-blue-950/5"
+                  >
+                    <div className="h-1 bg-gradient-to-r from-blue-700 via-blue-500 to-sky-300" aria-hidden="true" />
+                    <div className="p-4 sm:p-5">
+                      <div className="flex items-start gap-3.5">
+                        <div className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-100">
+                          <Lock size={18} aria-hidden="true" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700">
+                            Before you begin
+                          </p>
+                          <h3 id="assessment-access-title" className="mt-0.5 text-sm font-semibold leading-5 text-slate-900">
+                            Your assessment is ready
+                          </h3>
+                          <p className="mt-1 text-xs leading-5 text-slate-600">
+                            Sign in or create an account to continue. After authentication, we’ll take you straight to the launch screen.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("signin")}
+                          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-blue-700 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-blue-900/15 transition-all hover:-translate-y-0.5 hover:bg-blue-800 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                        >
+                          Sign in
+                          <ChevronRight size={15} aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("register")}
+                          className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                        >
+                          Create account
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
