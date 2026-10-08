@@ -719,9 +719,17 @@ export default function Home() {
                     </div>
 
                     {loginError && (
-                      <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-rose-500/50 bg-rose-500/10 p-3.5 text-xs font-semibold text-rose-200">
-                        <AlertCircle size={16} className="mt-0.5 shrink-0 text-rose-400" />
-                        <p>{loginError}</p>
+                      <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-semibold text-rose-800 shadow-sm animate-fade-in">
+                        <AlertCircle size={16} className="mt-0.5 shrink-0 text-rose-600" />
+                        <p className="flex-1 leading-relaxed">{loginError}</p>
+                        <button
+                          type="button"
+                          onClick={() => setLoginError("")}
+                          aria-label="Dismiss error"
+                          className="shrink-0 p-0.5 text-rose-400 hover:text-rose-700 transition-colors"
+                        >
+                          <X size={15} />
+                        </button>
                       </div>
                     )}
 
@@ -742,7 +750,10 @@ export default function Home() {
                             id="loginEmail"
                             type="email"
                             value={loginEmail}
-                            onChange={(e) => setLoginEmail(e.target.value)}
+                            onChange={(e) => {
+                              setLoginEmail(e.target.value);
+                              if (loginError) setLoginError("");
+                            }}
                             placeholder="candidate@example.com"
                             className="w-full rounded-xl border border-slate-200 bg-white shadow-sm pl-10 pr-3.5 py-3 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                             required
@@ -766,7 +777,10 @@ export default function Home() {
                             id="loginPassword"
                             type={showLoginPassword ? "text" : "password"}
                             value={loginPassword}
-                            onChange={(e) => setLoginPassword(e.target.value)}
+                            onChange={(e) => {
+                              setLoginPassword(e.target.value);
+                              if (loginError) setLoginError("");
+                            }}
                             placeholder="••••••••••"
                             className="w-full rounded-xl border border-slate-200 bg-white shadow-sm pl-10 pr-10 py-3 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                             required
@@ -825,9 +839,17 @@ export default function Home() {
                     </div>
 
                     {regError && (
-                      <div className="mb-3.5 flex items-start gap-2.5 rounded-xl border border-rose-500/50 bg-rose-500/10 p-3 text-xs font-semibold text-rose-200">
-                        <AlertCircle size={15} className="mt-0.5 shrink-0 text-rose-400" />
-                        <p>{regError}</p>
+                      <div className="mb-3.5 flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800 shadow-sm animate-fade-in">
+                        <AlertCircle size={15} className="mt-0.5 shrink-0 text-rose-600" />
+                        <p className="flex-1 leading-relaxed">{regError}</p>
+                        <button
+                          type="button"
+                          onClick={() => setRegError("")}
+                          aria-label="Dismiss error"
+                          className="shrink-0 p-0.5 text-rose-400 hover:text-rose-700 transition-colors"
+                        >
+                          <X size={15} />
+                        </button>
                       </div>
                     )}
 
