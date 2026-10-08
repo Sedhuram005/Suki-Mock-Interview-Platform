@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbConnect } from "@/lib/dbConnect";
+import { withRetry } from "@/lib/dbConnect";
 import Interview from "@/models/Interview";
 
 export async function POST(req: Request) {
@@ -25,13 +25,14 @@ export async function POST(req: Request) {
           }
         : undefined;
 
-    await dbConnect();
-    const doc = await Interview.create({
-      sessionName: sessionName.trim(),
-      userEmail: typeof userEmail === "string" ? userEmail.trim().toLowerCase() : "",
-      candidateName: typeof candidateName === "string" ? candidateName.trim() : sessionName.trim(),
-      device: safeDevice,
-    });
+    const doc = await withRetry(() =>
+      Interview.create({
+        sessionName: sessionName.trim(),
+        userEmail: typeof userEmail === "string" ? userEmail.trim().toLowerCase() : "",
+        candidateName: typeof candidateName === "string" ? candidateName.trim() : sessionName.trim(),
+        device: safeDevice,
+      })
+    );
     return NextResponse.json({ interviewId: doc._id.toString() }, { status: 201 });
   } catch (err) {
     console.error(err);

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbConnect, MongoConfigurationError } from "@/lib/dbConnect";
+import { MongoConfigurationError, withRetry } from "@/lib/dbConnect";
 import User from "@/models/User";
 
 export async function POST(req: Request) {
@@ -34,14 +34,13 @@ export async function POST(req: Request) {
       );
     }
 
-    await dbConnect();
-
     const normalizedEmail = email.toLowerCase().trim();
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
-    // Upsert or update user so testing multiple times updates gracefully
-    const user = await User.findOneAndUpdate(
-      { email: normalizedEmail },
+    // Upsert or update user with retry resilience for serverless environments
+    const user = await withRetry(() =>
+      User.findOneAndUpdate(
+        { email: normalizedEmail },
       {
         name: fullName,
         firstName: firstName.trim(),
@@ -64,7 +63,8 @@ export async function POST(req: Request) {
         bio: bio?.trim() || "",
         skills: skills?.trim() || "",
       },
-      { new: true, upsert: true, runValidators: true }
+      { returnDocument: "after", upsert: true, runValidators: true }
+      )
     );
 
     const userResponse = {
