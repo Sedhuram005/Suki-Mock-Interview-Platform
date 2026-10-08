@@ -32,7 +32,7 @@ Open [http://localhost:3000/data-detective](http://localhost:3000/data-detective
 Body:
 
 ```json
-{ "sessionName": "Sedhu" }
+{ "sessionName": "Candidate" }
 ```
 
 Success response (`201`):

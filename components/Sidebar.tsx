@@ -12,8 +12,8 @@ import {
   Cpu,
   Radio,
   Code2,
+  X,
 } from "lucide-react";
-import Link from "next/link";
 import Image from "next/image";
 import { type UserDetails } from "@/components/UserDetailsModal";
 
@@ -38,6 +38,8 @@ type Props = {
   onOpenProfile?: () => void;
   onLogout?: () => void;
   navigationDisabled?: boolean;
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
 };
 
 export default function Sidebar({
@@ -54,6 +56,8 @@ export default function Sidebar({
   onOpenProfile,
   onLogout,
   navigationDisabled = false,
+  mobileOpen = false,
+  onCloseMobile,
 }: Props) {
   const profile = userDetails;
 
@@ -71,8 +75,8 @@ export default function Sidebar({
   const fmtTime = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
-  return (
-    <aside className="hidden lg:flex min-h-0 w-80 shrink-0 flex-col m-3 overflow-y-auto overflow-x-hidden rounded-[26px] border border-sky-300/20 bg-gradient-to-b from-[#0a1b3d] via-[#0b2552] to-[#081832] text-slate-100 shadow-[0_20px_55px_rgba(8,27,62,0.32)]">
+  const renderContent = (isMobile = false) => (
+    <>
       <div className="border-b border-white/10 px-5 pb-4 pt-5">
         <div className="flex items-center justify-between">
           {navigationDisabled ? (
@@ -80,30 +84,45 @@ export default function Sidebar({
               <Image
                 src="/suki-logo-cropped.png"
                 alt="Suki Software Solutions"
-                width={140}
-                height={50}
+                width={130}
+                height={45}
                 className="h-7 w-auto object-contain"
               />
             </div>
           ) : (
             <button
               type="button"
-              onClick={() => window.location.href = '/'}
+              onClick={() => {
+                if (isMobile) onCloseMobile?.();
+                window.location.href = '/';
+              }}
               className="flex items-center rounded-xl bg-white/95 px-3 py-1.5 shadow-xl shadow-blue-950/40 transition-all duration-200 hover:bg-white hover:scale-[1.02] active:scale-[0.98]"
             >
               <Image
                 src="/suki-logo-cropped.png"
                 alt="Suki Software Solutions"
-                width={140}
-                height={50}
+                width={130}
+                height={45}
                 className="h-7 w-auto object-contain"
               />
             </button>
           )}
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1 text-[10px] font-bold text-sky-100 shadow-sm">
-            <span className="size-1.5 rounded-full bg-sky-300" />
-            Candidate portal
-          </span>
+
+          {isMobile ? (
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              aria-label="Close menu"
+              className="flex size-9 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20 active:scale-95 transition"
+            >
+              <X size={18} />
+            </button>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1 text-[10px] font-bold text-sky-100 shadow-sm">
+              <span className="size-1.5 rounded-full bg-sky-300" />
+              Candidate portal
+            </span>
+          )}
         </div>
         <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-100/65">Interactive assessment</p>
       </div>
@@ -111,7 +130,10 @@ export default function Sidebar({
       <div className="border-b border-white/10 px-4 py-4">
         <button
           type="button"
-          onClick={onOpenProfile}
+          onClick={() => {
+            if (isMobile) onCloseMobile?.();
+            onOpenProfile?.();
+          }}
           disabled={!onOpenProfile}
           aria-label={`Open profile for ${displayName}`}
           className="group relative flex min-h-16 w-full items-center gap-3 rounded-2xl border border-blue-300/15 bg-[#12315f] p-3 text-left transition-all duration-200 hover:border-sky-300/35 hover:bg-[#183d72] hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 disabled:cursor-default disabled:opacity-100 disabled:hover:border-blue-300/15 disabled:hover:bg-[#12315f] disabled:hover:shadow-none"
@@ -161,7 +183,7 @@ export default function Sidebar({
             <Video size={14} className={cameraReady ? "text-sky-400" : "text-slate-500"} />
             Camera
           </span>
-            <span className={`max-w-[140px] truncate text-right text-xs font-bold ${cameraReady ? "text-emerald-300" : "text-slate-400"}`}>
+          <span className={`max-w-[140px] truncate text-right text-xs font-bold ${cameraReady ? "text-emerald-300" : "text-slate-400"}`}>
             {cameraReady ? cameraLabel || "Ready" : "Standby"}
           </span>
         </div>
@@ -257,7 +279,10 @@ export default function Sidebar({
         ) : (
           <button
             type="button"
-            onClick={() => window.location.href = '/'}
+            onClick={() => {
+              if (isMobile) onCloseMobile?.();
+              window.location.href = '/';
+            }}
             className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-400 bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-md shadow-blue-950/25 transition-all duration-200 hover:border-blue-300 hover:bg-blue-500 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300"
           >
             <Home size={16} />
@@ -268,7 +293,10 @@ export default function Sidebar({
         {onLogout && (
           <button
             type="button"
-            onClick={onLogout}
+            onClick={() => {
+              if (isMobile) onCloseMobile?.();
+              onLogout();
+            }}
             className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300/20 bg-[#10264d] px-4 py-3 text-sm font-bold text-blue-50 shadow-sm transition-all duration-200 hover:border-rose-400 hover:bg-rose-700 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-300"
           >
             <LogOut size={14} />
@@ -276,6 +304,34 @@ export default function Sidebar({
           </button>
         )}
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Persistent Sidebar */}
+      <aside className="hidden lg:flex min-h-0 w-80 shrink-0 flex-col m-3 overflow-y-auto overflow-x-hidden rounded-[26px] border border-sky-300/20 bg-gradient-to-b from-[#0a1b3d] via-[#0b2552] to-[#081832] text-slate-100 shadow-[0_20px_55px_rgba(8,27,62,0.32)]">
+        {renderContent(false)}
+      </aside>
+
+      {/* Mobile Drawer Backdrop Scrim */}
+      <div
+        className={`fixed inset-0 z-[110] bg-slate-950/70 backdrop-blur-sm transition-opacity duration-300 lg:hidden ${
+          mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={onCloseMobile}
+        aria-hidden="true"
+      />
+
+      {/* Mobile Slide-in Drawer */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-[120] flex w-80 max-w-[85vw] flex-col bg-gradient-to-b from-[#0a1b3d] via-[#0b2552] to-[#081832] text-slate-100 shadow-2xl transition-transform duration-300 ease-out lg:hidden overflow-y-auto ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
+        }`}
+        aria-label="Candidate assessment mobile navigation"
+      >
+        {renderContent(true)}
+      </aside>
+    </>
   );
 }

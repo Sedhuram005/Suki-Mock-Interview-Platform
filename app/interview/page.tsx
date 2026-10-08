@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CheckCircle2, Clock, Info, WifiOff, Mic, User, Video, RotateCcw } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, Info, WifiOff, Mic, User, Video, RotateCcw, Menu } from "lucide-react";
 import { questions } from "@/lib/questions";
 import { getDeviceInfo } from "@/lib/deviceInfo";
 import { btnPrimary, btnSecondary, card } from "@/lib/ui";
@@ -78,6 +78,7 @@ export default function InterviewPage() {
   const [online, setOnline] = useState(true);
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const cameraVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(stream);
@@ -511,23 +512,35 @@ export default function InterviewPage() {
         timeLeft={remaining}
         onOpenProfile={() => setUserModalOpen(true)}
         onLogout={handleLogout}
+        mobileOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col m-3 lg:ml-0 rounded-[28px] border border-slate-200 bg-white overflow-hidden">
-        <header className="flex h-20 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-8">
-          <div className="flex items-center gap-4">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col m-1.5 sm:m-3 lg:ml-0 rounded-[20px] sm:rounded-[28px] border border-slate-200 bg-white overflow-hidden">
+        <header className="flex h-16 sm:h-20 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-8">
+          <div className="flex items-center gap-2.5 sm:gap-4">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open sidebar menu"
+              className="flex lg:hidden size-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 shadow-sm transition hover:bg-slate-100 hover:text-slate-900 active:scale-95"
+            >
+              <Menu size={20} />
+            </button>
             <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white">
               <StepIcon size={24} />
             </div>
             <div>
-              <h1 className="font-display text-lg font-semibold text-slate-900 sm:text-xl">{STEPS[stepIndex]?.fullLabel || "Assessment"}</h1>
-              <p className="text-xs text-slate-500">Stage {stepIndex + 1} of {STEPS.length}</p>
+              <h1 className="font-display text-sm font-semibold text-slate-900 sm:text-xl truncate max-w-[130px] xs:max-w-[180px] sm:max-w-none">
+                {STEPS[stepIndex]?.fullLabel || "Assessment"}
+              </h1>
+              <p className="text-[11px] text-slate-500 sm:text-xs">Stage {stepIndex + 1} of {STEPS.length}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {interviewId && (
-              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold tabular-nums text-slate-700">
-                <Clock size={16} className="text-blue-600" />
+              <div className="flex items-center gap-1.5 sm:gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold tabular-nums text-slate-700">
+                <Clock size={15} className="text-blue-600" />
                 {fmtTime(Math.max(0, remaining))}
               </div>
             )}
@@ -541,7 +554,7 @@ export default function InterviewPage() {
             </button>
             <button
               onClick={() => setUserModalOpen(true)}
-              className="flex size-11 items-center justify-center rounded-2xl bg-blue-600 text-white text-sm font-black shadow-md transition hover:bg-blue-700 cursor-pointer"
+              className="flex size-9 sm:size-11 items-center justify-center rounded-xl sm:rounded-2xl bg-blue-600 text-white text-xs sm:text-sm font-black shadow-md transition hover:bg-blue-700 cursor-pointer"
               title="View your profile"
             >
               {name.trim() ? name.trim()[0].toUpperCase() : "C"}
@@ -560,11 +573,11 @@ export default function InterviewPage() {
         )}
 
         <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white">
-          <div className="mx-auto max-w-7xl p-4 sm:p-8">
+          <div className="mx-auto max-w-7xl p-3 sm:p-8">
             {/* Stage 1: Audio and video calibration */}
             {stepIndex === 0 && (
               <div className="fade-up mx-auto max-w-xl">
-                <div className={`${card} p-8 sm:p-10`}>
+                <div className={`${card} p-5 sm:p-10`}>
                   <MicPermission onGranted={setStream} onContinue={startInterview} continuing={busy} />
                   {error && <ErrorNote>{error}</ErrorNote>}
                 </div>
@@ -573,19 +586,19 @@ export default function InterviewPage() {
 
             {/* Stage 2: Audio and video assessment */}
             {stepIndex === 1 && (
-              <div className="grid gap-8 xl:grid-cols-[1fr_350px]">
+              <div className="grid gap-6 sm:gap-8 xl:grid-cols-[1fr_350px]">
                 <section key={current.id} className={`${card} fade-up overflow-hidden`}>
-                  <div className="flex items-center justify-between border-b border-slate-100 bg-white px-8 py-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 bg-white px-4 sm:px-8 py-3.5 sm:py-4">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Section A · Screening</span>
-                    <span className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-bold text-white">
+                    <span className="rounded-full bg-blue-600 px-3.5 py-1 text-xs font-bold text-white">
                       Question {index + 1} of {questions.length}
                     </span>
                   </div>
-                  <div className="p-8">
+                  <div className="p-4 sm:p-8">
                     <h2
                       ref={headingRef}
                       tabIndex={-1}
-                      className="font-display text-2xl font-bold leading-snug text-slate-900 outline-none sm:text-3xl"
+                      className="font-display text-xl font-bold leading-snug text-slate-900 outline-none sm:text-3xl"
                     >
                       {current.text}
                     </h2>
@@ -667,16 +680,16 @@ export default function InterviewPage() {
                     </div>
                     {error && <ErrorNote onDismiss={() => setError("")}>{error}</ErrorNote>}
                   </div>
-                  <div className="flex flex-col-reverse gap-4 border-t border-slate-100 bg-white px-8 py-6 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col-reverse gap-4 border-t border-slate-100 bg-white px-4 sm:px-8 py-4 sm:py-6 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm text-slate-600" aria-live="polite">
                       {!online ? "Offline: reconnect to continue." : busy ? progressMessage : transcriptSavedForCurrent ? "Your transcript is below. Continue when you’re ready." : answer.blob ? "Transcription did not finish. Try again." : "Your answer will transcribe automatically after recording."}
                     </p>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       {transcriptSavedForCurrent && (
                         <button
                           onClick={() => void reRecord()}
                           disabled={busy || !online}
-                          className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-base font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1 whitespace-nowrap"
+                          className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1 whitespace-nowrap"
                         >
                           <RotateCcw size={18} />
                           Re-record
@@ -685,7 +698,7 @@ export default function InterviewPage() {
                       <button
                       onClick={transcriptSavedForCurrent ? continueAfterTranscript : () => void submitAnswer(answer, dict.getTranscript())}
                       disabled={(!answer.blob && !transcriptSavedForCurrent) || busy || !online}
-                      className={`${btnPrimary} px-8 py-3 text-base shadow-lg shadow-blue-500/25 hover:shadow-blue-500/30`}
+                      className={`${btnPrimary} flex-1 sm:flex-none justify-center px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base shadow-lg shadow-blue-500/25 hover:shadow-blue-500/30`}
                     >
                       {busy ? (
                         <>

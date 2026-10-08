@@ -201,25 +201,6 @@ export default function Home() {
     }
   };
 
-  // Demo auto-fill helpers
-  const handleDemoLoginFill = () => {
-    setLoginEmail("sedhuraman6677@gmail.com");
-    setLoginPassword("Password123");
-    setLoginError("");
-  };
-
-  const handleDemoRegisterFill = () => {
-    setRegFirstName("Sedhu");
-    setRegLastName("Raman");
-    setRegEmail("sedhuraman6677@gmail.com");
-    setRegPhone("+91 7338471266");
-    setRegProfession("Full Stack Software Engineer");
-    setRegEducation("B.Tech Computer Science");
-    setRegUniversity("National Institute of Technology");
-    setRegPassword("Password123");
-    setRegError("");
-  };
-
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("userData");
@@ -232,7 +213,7 @@ export default function Home() {
     userData?.name ||
     (userData?.firstName && userData?.lastName
       ? `${userData.firstName} ${userData.lastName}`.trim()
-      : "Sedhu Raman");
+      : "Candidate");
 
   // Rubric Dimensions Definition
   const rubricData = [
@@ -360,7 +341,7 @@ export default function Home() {
             ])
           ]}
           rightContent={
-            <div className="hidden lg:flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-3">
               {isLoggedIn ? (
                 <>
                   <button
@@ -534,7 +515,7 @@ export default function Home() {
           </div>
 
           {/* ================= RIGHT SIDE: CANDIDATE PORTAL / AUTH CARD ================= */}
-          <div className="lg:col-span-6 xl:col-span-5 w-full max-w-[500px] mx-auto lg:ml-auto">
+          <div id="auth-section" className="lg:col-span-6 xl:col-span-5 w-full max-w-[500px] mx-auto lg:ml-auto">
             {isLoggedIn && userData ? (
               /* ================= CANDIDATE READINESS CONSOLE (LOGGED IN) ================= */
               <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-7 sm:p-8 shadow-2xl backdrop-blur-xl text-slate-900">
@@ -735,14 +716,6 @@ export default function Home() {
                         </h2>
                         <p className="text-xs text-slate-600">Access saved profile and scorecards</p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleDemoLoginFill}
-                        className="text-xs font-bold text-slate-900 hover:text-slate-900 flex items-center gap-1.5 transition-colors bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl border border-slate-300 shadow-2xs cursor-pointer"
-                      >
-
-                        Demo Fill
-                      </button>
                     </div>
 
                     {loginError && (
@@ -770,7 +743,7 @@ export default function Home() {
                             type="email"
                             value={loginEmail}
                             onChange={(e) => setLoginEmail(e.target.value)}
-                            placeholder="sedhuraman6677@gmail.com"
+                            placeholder="candidate@example.com"
                             className="w-full rounded-xl border border-slate-200 bg-white shadow-sm pl-10 pr-3.5 py-3 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                             required
                           />
@@ -849,14 +822,6 @@ export default function Home() {
                         </h2>
                         <p className="text-xs text-slate-600">Synced directly to MongoDB</p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleDemoRegisterFill}
-                        className="text-xs font-bold text-slate-900 hover:text-slate-900 flex items-center gap-1.5 transition-colors bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl border border-slate-300 shadow-2xs cursor-pointer"
-                      >
-
-                        Sample Fill
-                      </button>
                     </div>
 
                     {regError && (
@@ -883,7 +848,7 @@ export default function Home() {
                             type="text"
                             value={regFirstName}
                             onChange={(e) => setRegFirstName(e.target.value)}
-                            placeholder="Sedhu"
+                            placeholder="First name"
                             className="w-full rounded-xl border border-slate-200 bg-white shadow-sm px-3 py-2 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                             required
                           />
@@ -896,7 +861,7 @@ export default function Home() {
                             type="text"
                             value={regLastName}
                             onChange={(e) => setRegLastName(e.target.value)}
-                            placeholder="Raman"
+                            placeholder="Last name"
                             className="w-full rounded-xl border border-slate-200 bg-white shadow-sm px-3 py-2 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                             required
                           />
@@ -913,7 +878,7 @@ export default function Home() {
                             type="email"
                             value={regEmail}
                             onChange={(e) => setRegEmail(e.target.value)}
-                            placeholder="sedhuraman6677@gmail.com"
+                            placeholder="candidate@example.com"
                             className="w-full rounded-xl border border-slate-200 bg-white shadow-sm pl-8 pr-3 py-2 text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-50 focus:ring-2 focus:ring-sky-400/20"
                             required
                           />
@@ -1079,7 +1044,7 @@ export default function Home() {
 
       {/* ================= ENHANCED AI SCORING RUBRIC MODAL ================= */}
       {scoringModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-md animate-fade-in overflow-y-auto">
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-md animate-fade-in overflow-y-auto">
           <div className="relative w-full max-w-2xl rounded-3xl border border-blue-100 bg-white/95 backdrop-blur-2xl p-6 sm:p-8 shadow-2xl shadow-blue-950/20 text-slate-900 my-auto overflow-hidden">
 
             {/* Header Ambient Glow */}
@@ -1245,7 +1210,7 @@ export default function Home() {
 
       {/* ================= INTERVIEW TRACKS MODAL ================= */}
       {tracksModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-md animate-fade-in overflow-y-auto">
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-md animate-fade-in overflow-y-auto">
           <div className="relative w-full max-w-4xl rounded-3xl border border-blue-100 bg-white/95 backdrop-blur-2xl p-6 sm:p-8 shadow-2xl shadow-blue-950/20 text-slate-900 my-auto overflow-hidden">
 
             {/* Header Ambient Glow */}

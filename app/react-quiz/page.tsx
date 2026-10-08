@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, Camera, CheckCircle2, Clock, Code2, Home, Trophy, Video } from "lucide-react";
+import { ArrowRight, Camera, CheckCircle2, Clock, Code2, Home, Trophy, Video, Menu } from "lucide-react";
 import Sidebar, { STEPS } from "@/components/Sidebar";
 import ErrorNote from "@/components/ErrorNote";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -29,6 +29,7 @@ function ReactQuizContent() {
   const [saveStatus, setSaveStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [quizStarted, setQuizStarted] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -457,21 +458,33 @@ function ReactQuizContent() {
         timeLeft={remaining}
         navigationDisabled={quizStarted && !result}
         onLogout={quizStarted && !result ? undefined : handleLogout}
+        mobileOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col m-3 lg:ml-0 rounded-[28px] border border-slate-200 bg-white overflow-hidden">
-        <header className="flex h-20 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-8">
-          <div className="flex items-center gap-4">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col m-1.5 sm:m-3 lg:ml-0 rounded-[20px] sm:rounded-[28px] border border-slate-200 bg-white overflow-hidden">
+        <header className="flex h-16 sm:h-20 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-8">
+          <div className="flex items-center gap-2.5 sm:gap-4">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open sidebar menu"
+              className="flex lg:hidden size-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 shadow-sm transition hover:bg-slate-100 hover:text-slate-900 active:scale-95"
+            >
+              <Menu size={20} />
+            </button>
             <div className="hidden h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white sm:flex">
               <Code2 size={24} />
             </div>
             <div>
-              <h1 className="font-display text-lg font-semibold text-slate-900 sm:text-xl">{STEPS[3].fullLabel}</h1>
-              <p className="text-xs text-slate-500">Stage 4 of {STEPS.length}</p>
+              <h1 className="font-display text-sm font-semibold text-slate-900 sm:text-xl truncate max-w-[140px] xs:max-w-[180px] sm:max-w-none">
+                {STEPS[3].fullLabel}
+              </h1>
+              <p className="text-[11px] text-slate-500 sm:text-xs">Stage 4 of {STEPS.length}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold tabular-nums text-slate-700 sm:px-4">
-            <Clock size={16} className="text-blue-600" /> {timeLabel}
+          <div className="flex items-center gap-1.5 sm:gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold tabular-nums text-slate-700">
+            <Clock size={15} className="text-blue-600" /> {timeLabel}
           </div>
         </header>
 

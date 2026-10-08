@@ -362,7 +362,7 @@ export default function RegisterPage() {
                         type="text"
                         value={formData.firstName}
                         onChange={handleChange}
-                        placeholder="e.g. Sedhu"
+                        placeholder="First name"
                         className={`${input} pl-11 text-slate-900`}
                         required
                         autoFocus

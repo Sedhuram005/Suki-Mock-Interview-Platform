@@ -106,7 +106,7 @@ export default function UserDetailsModal({ open, onClose, userDetails }: Props) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 sm:p-6 overflow-y-auto animate-fade-in">
+    <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 sm:p-6 overflow-y-auto animate-fade-in">
       <div className="relative w-full max-w-3xl rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-blue-950/25 overflow-hidden my-auto">
         {/* Header with Executive Corporate Blue Gradient */}
         <div className="relative overflow-hidden bg-white text-slate-900 p-6 sm:p-8 border-b border-slate-200">
