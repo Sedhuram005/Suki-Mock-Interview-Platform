@@ -5,9 +5,34 @@ declare global {
 }
 const cached = (global.mongooseCache ??= { conn: null, promise: null });
 
+export class MongoConfigurationError extends Error {
+  constructor() {
+    super("MONGODB_URI is missing or is not a valid MongoDB connection string.");
+    this.name = "MongoConfigurationError";
+  }
+}
+
+function getMongoUri() {
+  const mongodbUri = process.env.MONGODB_URI?.trim();
+  if (
+    !mongodbUri ||
+    /your_mongodb_connection_string/i.test(mongodbUri) ||
+    !/^mongodb(?:\+srv)?:\/\//i.test(mongodbUri)
+  ) {
+    throw new MongoConfigurationError();
+  }
+
+  try {
+    if (!new URL(mongodbUri).hostname) throw new Error("Missing MongoDB host");
+  } catch {
+    throw new MongoConfigurationError();
+  }
+
+  return mongodbUri;
+}
+
 export async function dbConnect() {
-  const mongodbUri = process.env.MONGODB_URI;
-  if (!mongodbUri) throw new Error("Please define MONGODB_URI in .env.local");
+  const mongodbUri = getMongoUri();
 
   // Return existing live connection
   if (cached.conn) return cached.conn;
@@ -66,4 +91,3 @@ export async function withRetry<T>(
   }
   throw lastError;
 }
-

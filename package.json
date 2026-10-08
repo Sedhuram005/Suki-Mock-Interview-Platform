@@ -7,12 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "local-whisper": "python -m uvicorn local_whisper.server:app --host 127.0.0.1 --port 8765",
     "export:database": "node scripts/export-database.mjs",
     "export:interviews": "node scripts/export-interviews.mjs",
     "export:interviews:csv": "node scripts/export-interviews.mjs",
     "export:interview-media": "node scripts/export-interview-media.mjs",
-    "translate:interviews": "node scripts/export-interviews.mjs --retranslate"
+    "transcribe:install": "cd speech-service && pip install -r requirements.txt",
+    "transcribe:start": "cd speech-service && python server.py"
   },
   "dependencies": {
     "@react-three/fiber": "^9.8.1",
@@ -23,6 +23,7 @@
     "mongoose": "^9.10.2",
     "next": "16.3.6",
     "ogl": "^1.0.11",
+    "openai": "^7.28.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "three": "^0.186.1"

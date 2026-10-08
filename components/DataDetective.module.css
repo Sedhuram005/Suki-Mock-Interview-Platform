@@ -168,10 +168,10 @@
 .emptyState h2 { margin: 9px 0 0; color: #24362c; font-size: clamp(22px, 2.5vw, 28px); font-weight: 660; letter-spacing: -1.1px; line-height: 1.22; }
 .emptyState h2 span { color: #718876; font-weight: 500; }
 .emptyState > p { max-width: 475px; margin: 10px 0 18px; color: #7e8b82; font-size: 11px; line-height: 1.65; }
-.sampleButton { display: flex; min-height: 39px; align-items: center; justify-content: center; gap: 9px; padding: 0 14px; border: 0; border-radius: 8px; background: #203c2d; color: #f4f8ef; font-size: 11px; font-weight: 640; box-shadow: 0 5px 14px rgba(30, 60, 45, 0.13); cursor: pointer; transition: transform 140ms ease, background 140ms ease, box-shadow 140ms ease; }
-.sampleButton:hover:not(:disabled) { transform: translateY(-1px); background: #2a4c39; box-shadow: 0 8px 18px rgba(30, 60, 45, 0.17); }
+.sampleButton { display: flex; min-height: 39px; align-items: center; justify-content: center; gap: 9px; padding: 0 14px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font-size: 11px; font-weight: 640; box-shadow: 0 3px 10px rgba(37, 99, 235, 0.18); cursor: pointer; }
+.sampleButton:hover:not(:disabled) { background: #1d4ed8; }
 .sampleButton:disabled { cursor: wait; opacity: 0.75; }
-.sampleButton svg:first-child { color: #d8f56d; }
+.sampleButton svg:first-child { color: #fff; }
 .sampleButton svg:last-child { margin-left: 4px; }
 .starterLabel { margin: 21px 0 9px; color: #a2ada4; font-size: 8px; font-weight: 760; letter-spacing: 1.5px; }
 .starterQuestions { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; }
@@ -240,9 +240,9 @@
 .composer textarea:disabled { opacity: 0.65; }
 .composerUpload { display: grid; width: 31px; height: 31px; flex: 0 0 auto; place-items: center; border: 1px solid #e4eae2; border-radius: 7px; background: #fafcf8; color: #829280; cursor: pointer; }
 .composerUpload:hover { background: #f1f6e9; color: #51694e; }
-.sendButton { display: grid; width: 35px; height: 35px; flex: 0 0 auto; place-items: center; border: 0; border-radius: 8px; background: #253d2e; color: #e6f3d0; cursor: pointer; transition: transform 120ms ease, background 120ms ease; }
-.sendButton:hover:not(:disabled) { transform: translateY(-1px); background: #31543c; }
-.sendButton:disabled { background: #dfe8db; color: #9baa99; cursor: not-allowed; }
+.sendButton { display: grid; width: 35px; height: 35px; flex: 0 0 auto; place-items: center; border: 0; border-radius: 8px; background: #2563eb; color: #fff; cursor: pointer; }
+.sendButton:hover:not(:disabled) { background: #1d4ed8; }
+.sendButton:disabled { background: #dbeafe; color: #93a4c0; cursor: not-allowed; }
 .composerFooter { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 2px 0; color: #a2aca3; font-size: 8px; }
 .composerFooter > span:last-child { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
 .composerFooter kbd { padding: 2px 4px; border: 1px solid #e1e7e0; border-radius: 4px; background: #fbfcfa; color: #8d998e; font: inherit; font-size: 8px; }

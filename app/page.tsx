@@ -24,6 +24,7 @@ import {
   BarChart3,
   X,
   Code2,
+  Clock,
   Server,
   Users,
   Mic,
@@ -455,7 +456,7 @@ export default function Home() {
             </p>
 
             {/* Value Proposition Pills Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
               <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white shadow-sm border border-slate-200 shadow-lg backdrop-blur-md">
                 <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-slate-900 shrink-0">
                   <Mic size={20} />
@@ -488,6 +489,16 @@ export default function Home() {
                 <div>
                   <h4 className="text-sm font-bold text-slate-900">Scorecard</h4>
                   <p className="text-xs text-slate-600">Instant strengths and gaps</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white shadow-sm border border-slate-200 shadow-lg backdrop-blur-md">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-slate-900 shrink-0">
+                  <Clock size={20} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">1 Hour Total</h4>
+                  <p className="text-xs text-slate-600">30m Voice + 30m MCQ</p>
                 </div>
               </div>
             </div>

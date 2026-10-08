@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbConnect } from "@/lib/dbConnect";
+import { dbConnect, MongoConfigurationError } from "@/lib/dbConnect";
 import User from "@/models/User";
 
 export async function POST(req: Request) {
@@ -97,6 +97,17 @@ export async function POST(req: Request) {
       user: userResponse,
     });
   } catch (error: unknown) {
+    if (error instanceof MongoConfigurationError) {
+      console.error("Registration unavailable: MONGODB_URI is missing or invalid.");
+      return NextResponse.json(
+        {
+          error:
+            "Registration is unavailable because the database is not configured. Set MONGODB_URI in .env.local to a URI starting with mongodb:// or mongodb+srv://, then restart the app.",
+        },
+        { status: 503 },
+      );
+    }
+
     console.error("Registration error:", error);
     const message = error instanceof Error ? error.message : "";
     return NextResponse.json(

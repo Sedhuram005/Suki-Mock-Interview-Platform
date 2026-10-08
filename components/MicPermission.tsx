@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -27,6 +27,7 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
   const [error, setError] = useState("");
   const [stream, setStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const autoRequestStartedRef = useRef(false);
 
   useEffect(() => {
     if (stream && videoRef.current) {
@@ -60,7 +61,7 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
     };
   }, []);
 
-  const requestMic = async () => {
+  const requestMedia = useCallback(async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setStatus("denied");
       setError("This browser cannot access media devices. Try a current browser over HTTPS or localhost.");
@@ -71,7 +72,16 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
     setError("");
 
     try {
-      const nextStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      const nextStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: { ideal: true },
+          noiseSuppression: { ideal: false },
+          autoGainControl: { ideal: false },
+          channelCount: { ideal: 1 },
+          sampleRate: { ideal: 16_000 },
+        },
+        video: true,
+      });
       setStatus("granted");
       setStream((current) => {
         current?.getTracks().forEach((track) => track.stop());
@@ -91,7 +101,13 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
             : "The microphone or camera is not active. Reload the page and allow access again.",
       );
     }
-  };
+  }, [onGranted, stream]);
+
+  useEffect(() => {
+    if (autoRequestStartedRef.current) return;
+    autoRequestStartedRef.current = true;
+    void requestMedia();
+  }, [requestMedia]);
 
   const { label, classes, Icon } = STATUS_META[status];
 
@@ -101,9 +117,9 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
         <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-600/20">
           <Video size={28} aria-hidden="true" />
         </span>
-        <h2 className="mt-4 text-2xl font-semibold text-slate-900">Check your microphone & camera</h2>
+        <h2 className="mt-4 text-2xl font-semibold text-slate-900">Camera &amp; microphone access</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Allow microphone and camera access to record your video interview.
+          We request both devices automatically when this assessment opens. Allow the browser prompt to continue.
         </p>
       </div>
 
@@ -161,7 +177,7 @@ export default function MicPermission({ onGranted, onContinue, continuing }: Pro
       ) : (
         <button
           type="button"
-          onClick={requestMic}
+          onClick={() => void requestMedia()}
           disabled={status === "pending"}
           className={`${btnPrimary} w-full`}
         >

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CheckCircle2, Clock, Info, Timer, WifiOff, Mic, User, Video } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, Info, WifiOff, Mic, User, Video, RotateCcw } from "lucide-react";
 import { questions } from "@/lib/questions";
 import { getDeviceInfo } from "@/lib/deviceInfo";
 import { btnPrimary, btnSecondary, card } from "@/lib/ui";
@@ -10,43 +10,70 @@ import MicPermission from "@/components/MicPermission";
 import Recorder, { type AnswerData } from "@/components/Recorder";
 import Sidebar, { STEPS } from "@/components/Sidebar";
 import ErrorNote from "@/components/ErrorNote";
-import ConfirmDialog from "@/components/ConfirmDialog";
 import UserDetailsModal, { type UserDetails } from "@/components/UserDetailsModal";
 import { startPageLoad } from "@/lib/page-loader";
 import SukiLoadingMark from "@/components/SukiLoadingMark";
 import SukiPageLoader from "@/components/SukiPageLoader";
+import { toWav16k } from "@/lib/wavEncoder";
+import { useDictation } from "@/hooks/useDictation";
+import TranscriptPanel from "@/components/TranscriptPanel";
 
 const fmtTime = (s: number) =>
   `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
+const getAudioConstraints = (deviceId?: string): MediaTrackConstraints => ({
+  ...(deviceId && deviceId !== "default" ? { deviceId: { exact: deviceId } } : {}),
+  echoCancellation: true,
+  noiseSuppression: false,
+  autoGainControl: false,
+  channelCount: 1,
+  sampleRate: 16_000,
+});
+
 type InterviewAnswerResult = {
   questionId: number;
   questionText: string;
+  transcript?: string;
+  asrEngine?: string;
+  transcriptionStatus?: "completed" | "failed";
+  evaluationStatus?: "pending" | "processing" | "completed" | "failed";
+  evaluation?: {
+    communication: number;
+    technical: number;
+    relevance: number;
+    completeness: number;
+    clarity: number;
+    overall: number;
+    summary: string;
+  } | null;
+  draftEnglishText?: string;
   englishText?: string;
-  language?: string;
-  confidence?: number | null;
-  needsReview?: boolean;
-  translationStatus?: "pending" | "done" | "needs_review" | "failed";
+  humanVerified?: boolean;
+  verifiedAt?: string | null;
   audioUrl?: string | null;
   videoUrl?: string | null;
 };
 
 export default function InterviewPage() {
   const router = useRouter();
+
   const [authReady, setAuthReady] = useState(false);
   const [name, setName] = useState("");
   const [interviewId, setInterviewId] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [index, setIndex] = useState(0);
+
+  const dict = useDictation({
+    resetKey: String(questions[index]?.id ?? index),
+    prompt: questions[index]?.text ?? "",
+  });
   const [answer, setAnswer] = useState<AnswerData>({ blob: null, videoBlob: null });
   const [results, setResults] = useState<InterviewAnswerResult[]>([]);
+  const [latestTranscript, setLatestTranscript] = useState<{ questionId: number; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [retryingQuestionId, setRetryingQuestionId] = useState<number | null>(null);
   const [progressMessage, setProgressMessage] = useState("");
-  const [latestTranscript, setLatestTranscript] = useState<{ questionText: string; text: string } | null>(null);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [online, setOnline] = useState(true);
   const [userModalOpen, setUserModalOpen] = useState(false);
@@ -54,6 +81,21 @@ export default function InterviewPage() {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const cameraVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(stream);
+  const submittingQuestionIdRef = useRef<number | null>(null);
+  const warmupStartedRef = useRef(false);
+  const fallbackAsrWarmupStartedRef = useRef(false);
+  const scorePollAttemptsRef = useRef(0);
+
+  useEffect(() => {
+    const previousDocumentOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = previousDocumentOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, []);
 
   useEffect(() => {
     streamRef.current = stream;
@@ -81,7 +123,7 @@ export default function InterviewPage() {
     try {
       const currentStream = streamRef.current;
       freshAudioStream = await navigator.mediaDevices.getUserMedia({
-        audio: deviceId && deviceId !== "default" ? { deviceId: { exact: deviceId } } : true,
+        audio: getAudioConstraints(deviceId),
       });
       let videoTracks = currentStream?.getVideoTracks().filter((track) => track.readyState === "live") ?? [];
       if (videoTracks.length === 0) {
@@ -113,7 +155,7 @@ export default function InterviewPage() {
       });
       let audioTracks = currentStream?.getAudioTracks().filter((track) => track.readyState === "live") ?? [];
       if (audioTracks.length === 0) {
-        freshAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        freshAudioStream = await navigator.mediaDevices.getUserMedia({ audio: getAudioConstraints() });
         audioTracks = freshAudioStream.getAudioTracks();
       }
       const nextStream = new MediaStream([...audioTracks, ...freshCameraStream.getVideoTracks()]);
@@ -140,7 +182,7 @@ export default function InterviewPage() {
     const handleTrackEnd = async () => {
       console.warn("[MicMonitor] Audio track ended, attempting auto-refresh...");
       try {
-        const freshAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const freshAudioStream = await navigator.mediaDevices.getUserMedia({ audio: getAudioConstraints() });
         const videoTracks = streamRef.current?.getVideoTracks().filter((videoTrack) => videoTrack.readyState === "live") ?? [];
         const newStream = new MediaStream([...freshAudioStream.getAudioTracks(), ...videoTracks]);
         streamRef.current?.getAudioTracks().forEach((audioTrack) => audioTrack.stop());
@@ -221,8 +263,31 @@ export default function InterviewPage() {
     return () => window.clearTimeout(timeout);
   }, [router]);
 
+
+
+  useEffect(() => {
+    if (!done || !interviewId || scorePollAttemptsRef.current >= 150) return;
+    const hasPendingScores = results.some((item) => item.evaluationStatus === "pending" || item.evaluationStatus === "processing");
+    if (!hasPendingScores) return;
+
+    const timeout = window.setTimeout(async () => {
+      scorePollAttemptsRef.current += 1;
+      try {
+        const params = new URLSearchParams({ interviewId });
+        const response = await fetch(`/api/interview/results?${params.toString()}`, { cache: "no-store" });
+        const payload = await response.json();
+        if (response.ok && Array.isArray(payload.answers)) setResults(payload.answers as InterviewAnswerResult[]);
+      } catch {
+        // Results remain available even if a background refresh fails.
+      }
+    }, 2000);
+    return () => window.clearTimeout(timeout);
+  }, [done, interviewId, results]);
+
   const current = questions[index];
   const isLast = index === questions.length - 1;
+  const transcriptForCurrent = latestTranscript?.questionId === current.id ? latestTranscript.text : null;
+  const transcriptSavedForCurrent = transcriptForCurrent !== null;
   const stepIndex = done ? 2 : interviewId ? 1 : 0;
 
   // move focus to the question heading on each new question
@@ -246,7 +311,7 @@ export default function InterviewPage() {
     try {
       freshAudioStream = audioTracks.length > 0
         ? null
-        : await navigator.mediaDevices.getUserMedia({ audio: true });
+        : await navigator.mediaDevices.getUserMedia({ audio: getAudioConstraints() });
       freshVideoStream = videoTracks.length > 0
         ? null
         : await navigator.mediaDevices.getUserMedia({ video: true });
@@ -293,121 +358,147 @@ export default function InterviewPage() {
     }
   };
 
-  const next = async () => {
-    const { blob, videoBlob } = answer;
-    if (!blob || !videoBlob || !interviewId) return;
+  const submitAnswer = async (recordedAnswer: AnswerData = answer, liveTranscript = "") => {
+    const { blob, videoBlob } = recordedAnswer;
+    if (
+      !blob || !videoBlob || !interviewId ||
+      submittingQuestionIdRef.current === current.id || transcriptSavedForCurrent
+    ) return;
+
+    if (dict.hasFailed) {
+      setError("One part of your answer couldn't be converted. Please click Retry on it first, then save.");
+      return;
+    }
+
+    submittingQuestionIdRef.current = current.id;
     setBusy(true);
     setError("");
-    setProgressMessage("Saving your original audio and video…");
+    const cleanLiveTranscript = liveTranscript.replace(/\s+/g, " ").trim();
+    const hasUsableLiveTranscript = cleanLiveTranscript.split(/\s+/).filter(Boolean).length >= 1;
+    setProgressMessage(hasUsableLiveTranscript ? "Saving your English transcript and recording…" : "Running one final English accuracy pass over your answer…");
     try {
+      // Use the complete recorder file for fallback transcription so dictation
+      // startup latency cannot clip the first words from the audio-worklet copy.
+      const speechWav = hasUsableLiveTranscript ? null : await toWav16k(blob);
       const form = new FormData();
       form.set("interviewId", interviewId);
       form.set("questionId", String(current.id));
       form.set("questionText", current.text);
       form.set("audio", blob, `answer.${blob.type.includes("mp4") ? "m4a" : "webm"}`);
+      if (hasUsableLiveTranscript) form.set("liveTranscript", cleanLiveTranscript);
+      if (speechWav) form.set("speechAudio", speechWav, "answer-16khz-mono.wav");
       form.set("video", videoBlob, `answer-video.${videoBlob.type.includes("mp4") ? "mp4" : "webm"}`);
       form.set("audioMimeType", blob.type || "audio/webm");
       form.set("videoMimeType", videoBlob.type || "video/webm");
       form.set("isLast", String(isLast));
-      const res = await fetch("/api/interview/submit-answer", {
+
+      const response = await fetch("/api/interview/submit-answer", {
         method: "POST",
         body: form,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setAnswer({ blob: null, videoBlob: null });
-      if (isLast) stream?.getTracks().forEach((track) => track.stop());
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Could not transcribe and save the recording.");
 
-      setProgressMessage("Converting your speech to English on this machine…");
-      let translatedAnswers: InterviewAnswerResult[] = [];
-      let extractionError = "";
-      try {
-        const params = new URLSearchParams({
-          interviewId,
-          questionId: String(current.id),
-        });
-        const resultsResponse = await fetch(`/api/interview/results?${params.toString()}`, { cache: "no-store" });
-        const resultsData = await resultsResponse.json();
-        if (!resultsResponse.ok) throw new Error(resultsData.error || "Local English translation could not be loaded.");
-        translatedAnswers = Array.isArray(resultsData.answers) ? resultsData.answers : [];
-        setResults(translatedAnswers);
-      } catch (translationError) {
-        extractionError = translationError instanceof Error
-          ? translationError.message
-          : "The local English translation could not be loaded.";
-      }
-
-      const translatedCurrentAnswer = translatedAnswers.find((item) => item.questionId === current.id);
-      if (translatedCurrentAnswer?.translationStatus === "done" && translatedCurrentAnswer.englishText) {
-        setLatestTranscript({ questionText: current.text, text: translatedCurrentAnswer.englishText });
-        setProgressMessage("English transcript saved.");
-      } else {
-        setProgressMessage("Original audio and video saved; English translation needs a retry.");
-        setError(
-          extractionError ||
-          "Your audio and video were saved, but local Whisper could not translate this answer. Start the local Whisper service and retry from results.",
-        );
-      }
-
-      if (isLast) {
-        setDone(true);
-      } else {
-        setIndex((i) => i + 1);
-      }
+      const transcript = String(payload.transcript || "").trim();
+      setLatestTranscript({ questionId: current.id, text: transcript });
+      setResults((saved) => [
+        ...saved.filter((item) => item.questionId !== current.id),
+        {
+          questionId: current.id,
+          questionText: current.text,
+          transcript,
+          asrEngine: String(payload.asrEngine || "faster-whisper-en"),
+          transcriptionStatus: "completed" as const,
+          evaluationStatus: "pending" as const,
+        },
+      ].sort((a, b) => a.questionId - b.questionId));
+      setProgressMessage("English transcript is ready below.");
     } catch (caught: unknown) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Saving failed. Your recording is kept, please try again.",
-      );
+      submittingQuestionIdRef.current = null;
+      setError(caught instanceof Error ? caught.message : "Saving failed. Your recording is kept; please try again.");
     } finally {
       setBusy(false);
-      setConfirmOpen(false);
     }
   };
 
-  const restart = () => {
-    setName(""); setInterviewId(null); setStream(null);
-    setIndex(0); setAnswer({ blob: null, videoBlob: null }); setResults([]);
-    setError(""); setDone(false); setElapsed(0); setProgressMessage(""); setLatestTranscript(null);
+  const handleRecordingChange = async (recordedAnswer: AnswerData) => {
+    setAnswer(recordedAnswer);
+    if (recordedAnswer.blob && recordedAnswer.videoBlob) {
+      setBusy(true);
+      setError("");
+      setProgressMessage("Preparing your final English transcript…");
+      await dict.stop();
+      const transcript = dict.getTranscript();
+      await submitAnswer(recordedAnswer, transcript);
+    }
   };
 
-  const retryTranslation = async (questionId: number) => {
-    if (!interviewId || retryingQuestionId !== null) return;
-    setRetryingQuestionId(questionId);
+  const handleRecordingStateChange = (recording: boolean, audioTrack?: MediaStreamTrack) => {
+    if (recording) {
+      dict.reset();
+      void dict.start(audioTrack);
+    } else {
+      void dict.stop();
+    }
+  };
+
+  const reRecord = async () => {
+    if (!transcriptSavedForCurrent || busy || !interviewId) return;
+    setBusy(true);
     setError("");
+    setProgressMessage("Deleting previous answer...");
     try {
-      const params = new URLSearchParams({
-        interviewId,
-        questionId: String(questionId),
-        refresh: "1",
+      const res = await fetch("/api/interview/delete-answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interviewId, questionId: current.id }),
       });
-      const response = await fetch(`/api/interview/results?${params.toString()}`, { cache: "no-store" });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Could not retry the English translation.");
-      const freshAnswers: InterviewAnswerResult[] = Array.isArray(payload.answers) ? payload.answers : [];
-      setResults(freshAnswers);
-      const answerResult = freshAnswers.find((item) => item.questionId === questionId);
-      if (answerResult?.translationStatus === "needs_review" || answerResult?.needsReview) {
-        setError("The local Whisper model could not produce a dependable English translation. The original recording is safe; switch to a stronger multilingual model, then retry.");
-      } else if (answerResult?.translationStatus !== "done" || !answerResult.englishText) {
-        setError("Local Whisper could not translate that answer. Check that the local service is running, then retry.");
-      }
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not retry the English translation.");
+      if (!res.ok) throw new Error();
+
+      setResults(prev => prev.filter(r => r.questionId !== current.id));
+      setAnswer({ blob: null, videoBlob: null });
+      setLatestTranscript(null);
+      dict.reset();
+      submittingQuestionIdRef.current = null;
+    } catch {
+      setError("Failed to delete the previous answer. Please try again.");
     } finally {
-      setRetryingQuestionId(null);
+      setBusy(false);
+      setProgressMessage("");
+    }
+  };
+
+  const continueAfterTranscript = () => {
+    if (!transcriptSavedForCurrent || busy) return;
+    setError("");
+    setProgressMessage("");
+    setAnswer({ blob: null, videoBlob: null });
+    setLatestTranscript(null);
+    dict.reset();
+    submittingQuestionIdRef.current = null;
+    if (isLast) {
+      scorePollAttemptsRef.current = 0;
+      stream?.getTracks().forEach((track) => track.stop());
+      setDone(true);
+      void fetch("/api/interview/evaluate-pending", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interviewId }),
+        keepalive: true,
+      }).catch(() => {});
+    } else {
+      setIndex((value) => value + 1);
     }
   };
 
   const refId = interviewId ? interviewId.slice(-8).toUpperCase() : null;
-  const answered = done ? questions.length : index;
+  const answered = done ? questions.length : index + (transcriptSavedForCurrent ? 1 : 0);
   const StepIcon = STEPS[stepIndex].icon;
-
+  const remaining = 30 * 60 - elapsed;
   if (!authReady) return <SukiPageLoader caption="Checking sign-in" />;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white text-slate-900">
+    <div className="fixed inset-0 flex min-h-0 overflow-hidden overscroll-none bg-white text-slate-900">
       <Sidebar
         current={done ? 2 : stepIndex}
         name={name}
@@ -417,12 +508,12 @@ export default function InterviewPage() {
         userDetails={userDetails}
         questionIndex={index}
         totalQuestions={questions.length}
-        elapsed={elapsed}
+        timeLeft={remaining}
         onOpenProfile={() => setUserModalOpen(true)}
         onLogout={handleLogout}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col m-3 lg:ml-0 rounded-[28px] border border-slate-200 bg-white overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col m-3 lg:ml-0 rounded-[28px] border border-slate-200 bg-white overflow-hidden">
         <header className="flex h-20 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-8">
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white">
@@ -437,7 +528,7 @@ export default function InterviewPage() {
             {interviewId && (
               <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold tabular-nums text-slate-700">
                 <Clock size={16} className="text-blue-600" />
-                {fmtTime(elapsed)}
+                {fmtTime(Math.max(0, remaining))}
               </div>
             )}
             <button
@@ -468,7 +559,7 @@ export default function InterviewPage() {
           </div>
         )}
 
-        <main className="flex-1 overflow-y-auto bg-white">
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white">
           <div className="mx-auto max-w-7xl p-4 sm:p-8">
             {/* Stage 1: Audio and video calibration */}
             {stepIndex === 0 && (
@@ -498,20 +589,9 @@ export default function InterviewPage() {
                     >
                       {current.text}
                     </h2>
-                    {latestTranscript && (
-                      <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4" role="status" aria-live="polite">
-                        <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">Previous answer · English transcript</p>
-                        <p className="mt-2 text-sm leading-relaxed text-emerald-950">{latestTranscript.text}</p>
-                      </div>
-                    )}
-                    <div className="mt-4 flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700">
-                      <Timer size={18} className="text-blue-600" />
-                      Suggested answer time: 30 to 60 seconds
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                      <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-800">Any language</span>
-                      <span>Speak in any language. Your answers are converted to English.</span>
-                    </div>
+                    <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                      Answer in English. Live captions appear as you speak; Ollama scoring starts after the final answer.
+                    </p>
                     <div className="mx-auto mt-6 w-full max-w-4xl">
                       <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-slate-300 bg-slate-950 shadow-lg">
                         <video
@@ -531,13 +611,15 @@ export default function InterviewPage() {
                         <span className="inline-flex items-center gap-1.5"><Mic size={14} /> Microphone: {stream?.getAudioTracks()[0]?.label || "Default microphone"}</span>
                       </div>
                     </div>
-                    <div className="mt-8">
+                    <div key={current.id} className="mt-8">
                       <Recorder
                         key={current.id}
                         stream={stream!}
-                        onChange={setAnswer}
+                        onChange={handleRecordingChange}
+                        onRecordingStateChange={handleRecordingStateChange}
                         onRefreshStream={refreshStream}
                         onRefreshCamera={refreshCameraStream}
+                        locked={busy || transcriptSavedForCurrent}
                       />
                       {error && (error.includes("microphone") || error.includes("camera")) && (
                         <button
@@ -550,26 +632,77 @@ export default function InterviewPage() {
                         </button>
                       )}
                     </div>
-                    {error && <ErrorNote>{error}</ErrorNote>}
+                    <div className="mt-5">
+                      {transcriptSavedForCurrent ? (
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-5">
+                          <div className="flex items-center gap-3 mb-3">
+                            <span className="grid size-9 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
+                              <CheckCircle2 size={18} aria-hidden="true" />
+                            </span>
+                            <div>
+                              <h3 className="text-sm font-bold text-slate-900">Your English transcript</h3>
+                              <p className="text-xs text-slate-600">Saved answer · Ready for next question</p>
+                            </div>
+                            <span className="ml-auto rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-300">
+                              Transcript saved
+                            </span>
+                          </div>
+                          <div className="min-h-20 rounded-xl border border-white/80 bg-white p-4 shadow-sm">
+                            <p className="whitespace-pre-wrap text-sm leading-6 text-slate-800 font-medium">{transcriptForCurrent}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <TranscriptPanel
+                          lines={dict.lines}
+                          status={dict.status}
+                          speaking={dict.speaking}
+                          level={dict.level}
+                          pending={dict.pending}
+                          error={dict.error}
+                          onClear={dict.reset}
+                          onClearError={dict.clearError}
+                          onRetry={dict.retryLine}
+                        />
+                      )}
+                    </div>
+                    {error && <ErrorNote onDismiss={() => setError("")}>{error}</ErrorNote>}
                   </div>
                   <div className="flex flex-col-reverse gap-4 border-t border-slate-100 bg-white px-8 py-6 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm text-slate-600" aria-live="polite">
-                      {!online ? "Offline: reconnect to continue." : busy ? progressMessage : progressMessage || (answer.blob ? "Answer ready to save." : "Record your answer to continue.")}
+                      {!online ? "Offline: reconnect to continue." : busy ? progressMessage : transcriptSavedForCurrent ? "Your transcript is below. Continue when you’re ready." : answer.blob ? "Transcription did not finish. Try again." : "Your answer will transcribe automatically after recording."}
                     </p>
-                    <button
-                      onClick={isLast ? () => setConfirmOpen(true) : next}
-                      disabled={!answer.blob || busy || !online}
+                    <div className="flex items-center gap-3">
+                      {transcriptSavedForCurrent && (
+                        <button
+                          onClick={() => void reRecord()}
+                          disabled={busy || !online}
+                          className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-base font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1 whitespace-nowrap"
+                        >
+                          <RotateCcw size={18} />
+                          Re-record
+                        </button>
+                      )}
+                      <button
+                      onClick={transcriptSavedForCurrent ? continueAfterTranscript : () => void submitAnswer(answer, dict.getTranscript())}
+                      disabled={(!answer.blob && !transcriptSavedForCurrent) || busy || !online}
                       className={`${btnPrimary} px-8 py-3 text-base shadow-lg shadow-blue-500/25 hover:shadow-blue-500/30`}
                     >
-                      {busy && !confirmOpen ? (
-                        <><SukiLoadingMark size={18} /> Processing...</>
-                      ) : isLast ? (
-                        "Review and submit"
+                      {busy ? (
+                        <>
+                          <SukiLoadingMark size={18} />
+                          {dict.getTranscript().split(/\s+/).filter(Boolean).length >= 3 ? "Saving answer…" : progressMessage.includes("Finishing") ? "Finishing transcript…" : "Transcribing…"}
+                        </>
+                      ) : transcriptSavedForCurrent ? isLast ? (
+                        "Finish assessment"
                       ) : (
                         <>Next question <ArrowRight size={18} /></>
+                      ) : answer.blob ? (
+                        dict.getTranscript() ? "Retry save" : "Retry transcription"
+                      ) : (
+                        "Waiting for recording"
                       )}
                     </button>
-                  </div>
+                  </div></div>
                 </section>
 
                 <aside className="space-y-6">
@@ -580,7 +713,7 @@ export default function InterviewPage() {
                         <div
                           key={q.id}
                           className={`flex h-12 items-center justify-center rounded-lg text-sm font-bold transition-all duration-300 ${
-                            i < index
+                            i < index || (i === index && transcriptSavedForCurrent)
                               ? "bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/25"
                               : i === index
                               ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25 ring-4 ring-blue-100"
@@ -614,7 +747,7 @@ export default function InterviewPage() {
                     <ul className="mt-3 space-y-2">
                       {[
                         "Speak clearly at a steady pace.",
-                        "Your audio is translated into English, and the video is saved with the answer.",
+                        "Your original audio and video are saved with the answer.",
                         "Answers cannot be changed after saving.",
                       ].map((item, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-blue-900/80">
@@ -635,9 +768,9 @@ export default function InterviewPage() {
                   <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
                     <CheckCircle2 size={40} />
                   </div>
-                  <h2 className="font-display mt-6 text-3xl font-bold text-slate-900">Assessment submitted</h2>
+                  <h2 className="font-display mt-6 text-3xl font-bold text-slate-900">Interactive assessment submitted</h2>
                   <p className="mt-2 text-lg text-slate-600">
-                    Thank you, {name}. Your responses have been recorded successfully.
+                    Thank you, {name}. Your spoken responses are saved. Continue to the React quiz to complete both assessment stages.
                   </p>
                 </div>
                 <dl className="grid grid-cols-2 divide-x divide-y divide-slate-200 border-b border-slate-200 text-center sm:grid-cols-4 sm:divide-y-0">
@@ -645,7 +778,7 @@ export default function InterviewPage() {
                     ["Reference ID", refId ?? "-"],
                     ["Answers saved", String(questions.length)],
                     ["Time taken", fmtTime(elapsed)],
-                    ["Status", "Completed"],
+                    ["Status", "Next: React quiz"],
                   ].map(([k, v]) => (
                     <div key={k} className="px-6 py-6">
                       <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">{k}</dt>
@@ -668,37 +801,44 @@ export default function InterviewPage() {
                           <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Question {i + 1}</p>
                         </div>
                         <p className="text-base font-semibold text-slate-900 mb-2">{item.questionText}</p>
-                        <div className="mb-3 flex flex-wrap items-center gap-2">
-                          {item.language && !["en", "english"].includes(item.language.toLowerCase()) && (
-                            <span className="text-xs text-slate-600">Translated from {item.language}</span>
-                          )}
-                          {item.needsReview && (
-                            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900">Needs review</span>
+                        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                          <p className="text-xs font-bold uppercase tracking-wide text-blue-800">English transcript</p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+                            {item.transcript || item.englishText || item.draftEnglishText || "No transcript was returned for this answer."}
+                          </p>
+                          {item.asrEngine && (
+                            <p className="mt-2 text-xs text-slate-500">
+                              {item.asrEngine === "faster-whisper-en"
+                                ? "Recognized locally with faster-whisper · English only"
+                                : item.asrEngine === "browser-speech-recognition-en"
+                                  ? "Live browser dictation · English only"
+                                  : item.asrEngine}
+                            </p>
                           )}
                         </div>
-                        {item.translationStatus === "done" && item.englishText ? (
-                          <p className="text-sm leading-relaxed text-slate-700">{item.englishText}</p>
-                        ) : (
-                          <div>
-                            {item.englishText && (
-                              <p className="mb-2 text-sm leading-relaxed text-slate-700">{item.englishText}</p>
-                            )}
-                            <p role="status" className="text-sm text-amber-800">
-                              {item.translationStatus === "needs_review" || item.needsReview
-                                ? "The local model could not produce a dependable English translation. The original recording is saved."
-                                : "English translation unavailable. The original recording is saved."}
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => void retryTranslation(item.questionId)}
-                              disabled={retryingQuestionId !== null}
-                              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-50 disabled:opacity-60"
-                            >
-                              {retryingQuestionId === item.questionId && <SukiLoadingMark size={16} />}
-                              Retry English translation
-                            </button>
-                          </div>
-                        )}
+                        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+                          {item.evaluationStatus === "completed" && item.evaluation ? (
+                            <>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="text-sm font-bold text-slate-900">Answer score</p>
+                                <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-900">{item.evaluation.overall}/10 overall</span>
+                              </div>
+                              <dl className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
+                                {(["communication", "technical", "relevance", "completeness", "clarity"] as const).map((key) => (
+                                  <div key={key} className="rounded-lg bg-slate-50 p-2">
+                                    <dt className="capitalize text-slate-500">{key}</dt>
+                                    <dd className="mt-1 font-bold text-slate-900">{item.evaluation![key]}/10</dd>
+                                  </div>
+                                ))}
+                              </dl>
+                              {item.evaluation.summary && <p className="mt-3 text-sm leading-relaxed text-slate-700">{item.evaluation.summary}</p>}
+                            </>
+                          ) : item.evaluationStatus === "failed" ? (
+                            <p className="text-sm text-amber-800">Scoring is unavailable for this answer.</p>
+                          ) : (
+                            <p className="flex items-center gap-2 text-sm text-slate-600"><SukiLoadingMark size={14} /> Scoring in the background…</p>
+                          )}
+                        </div>
                         {item.videoUrl && (
                           <video
                             className="mt-4 aspect-video w-full rounded-lg bg-black object-contain"
@@ -721,25 +861,21 @@ export default function InterviewPage() {
                   </ul>
                 </div>
                 <div className="flex flex-col justify-center gap-4 border-t border-slate-100 bg-white px-8 py-6 sm:flex-row">
+                  {interviewId && (
+                    <Link
+                      href={`/react-quiz?interviewId=${encodeURIComponent(interviewId)}`}
+                      className={`${btnPrimary} px-8 py-3 text-base shadow-lg shadow-blue-500/25 hover:shadow-blue-500/30`}
+                    >
+                      Continue to React MCQ quiz <ArrowRight size={18} />
+                    </Link>
+                  )}
                   <Link href="/" className={`${btnSecondary} px-8 py-3 text-base`}>Back to home</Link>
-                  <button onClick={restart} className={`${btnPrimary} px-8 py-3 text-base shadow-lg shadow-blue-500/25 hover:shadow-blue-500/30`}>Start another assessment</button>
                 </div>
               </div>
             )}
           </div>
         </main>
       </div>
-
-      <ConfirmDialog
-        open={confirmOpen}
-        title="Submit your assessment?"
-        confirmLabel="Yes, submit"
-        busy={busy}
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={next}
-      >
-        You are about to save your last answer and finish the assessment. Answers cannot be changed after submission.
-      </ConfirmDialog>
 
       <UserDetailsModal
         open={userModalOpen}

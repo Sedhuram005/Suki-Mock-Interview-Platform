@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+**/.venv/
+/.cache/
 /.pnp
 .pnp.*
 .yarn/*
@@ -47,3 +49,14 @@ next-env.d.ts
 # Python bytecode
 __pycache__/
 *.py[cod]
+
+# Local speech model downloads (must be fetched by the speech service)
+/models/blobs/
+/models/CACHEDIR.TAG
+/models/models--*/
+/services/models/
+
+# Local patch/debug snapshots
+/diff.txt
+/last_commit_diff.txt
+/patch*.py

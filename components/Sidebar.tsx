@@ -11,7 +11,7 @@ import {
   Home,
   Cpu,
   Radio,
-  BadgeCheck,
+  Code2,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -21,6 +21,7 @@ export const STEPS = [
   { fullLabel: "Audio & Video Check", icon: Video },
   { fullLabel: "Interactive Assessment", icon: ClipboardList },
   { fullLabel: "Results & Submission", icon: Flag },
+  { fullLabel: "React MCQ Quiz", icon: Code2 },
 ];
 
 type Props = {
@@ -33,8 +34,10 @@ type Props = {
   questionIndex?: number;
   totalQuestions?: number;
   elapsed?: number;
+  timeLeft?: number;
   onOpenProfile?: () => void;
   onLogout?: () => void;
+  navigationDisabled?: boolean;
 };
 
 export default function Sidebar({
@@ -47,8 +50,10 @@ export default function Sidebar({
   questionIndex = 0,
   totalQuestions = 4,
   elapsed = 0,
+  timeLeft,
   onOpenProfile,
   onLogout,
+  navigationDisabled = false,
 }: Props) {
   const profile = userDetails;
 
@@ -61,163 +66,210 @@ export default function Sidebar({
   const role = profile?.profession || "Candidate";
   const emailVal = profile?.email || "";
   const initial = displayName.charAt(0).toUpperCase() || "C";
+  const displayedStage = Math.min(current + 1, STEPS.length);
 
   const fmtTime = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   return (
-    <aside className="hidden lg:flex w-80 shrink-0 flex-col m-3 overflow-y-auto overflow-x-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.06)]">
-      <div className="px-6 pt-6 pb-4 border-b border-slate-100">
+    <aside className="hidden lg:flex min-h-0 w-80 shrink-0 flex-col m-3 overflow-y-auto overflow-x-hidden rounded-[26px] border border-sky-300/20 bg-gradient-to-b from-[#0a1b3d] via-[#0b2552] to-[#081832] text-slate-100 shadow-[0_20px_55px_rgba(8,27,62,0.32)]">
+      <div className="border-b border-white/10 px-5 pb-4 pt-5">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center">
-            <Image
-              src="/suki-logo-cropped.png"
-              alt="Suki Software Solutions"
-              width={140}
-              height={50}
-              className="h-8 w-auto object-contain"
-            />
-          </Link>
-          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
-            <BadgeCheck size={12} />
-            Verified
+          {navigationDisabled ? (
+            <div aria-label="Suki Software Solutions" className="flex items-center rounded-xl bg-white/95 px-3 py-1.5 shadow-xl shadow-blue-950/40">
+              <Image
+                src="/suki-logo-cropped.png"
+                alt="Suki Software Solutions"
+                width={140}
+                height={50}
+                className="h-7 w-auto object-contain"
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => window.location.href = '/'}
+              className="flex items-center rounded-xl bg-white/95 px-3 py-1.5 shadow-xl shadow-blue-950/40 transition-all duration-200 hover:bg-white hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Image
+                src="/suki-logo-cropped.png"
+                alt="Suki Software Solutions"
+                width={140}
+                height={50}
+                className="h-7 w-auto object-contain"
+              />
+            </button>
+          )}
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1 text-[10px] font-bold text-sky-100 shadow-sm">
+            <span className="size-1.5 rounded-full bg-sky-300" />
+            Candidate portal
           </span>
         </div>
-        <p className="mt-1 text-xs font-medium text-slate-500">Candidate portal</p>
+        <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-100/65">Interactive assessment</p>
       </div>
 
-      <div className="px-4 py-4 border-b border-slate-100">
+      <div className="border-b border-white/10 px-4 py-4">
         <button
           type="button"
           onClick={onOpenProfile}
-          className="w-full flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-left transition hover:border-blue-200 hover:bg-blue-50/60 cursor-pointer"
+          disabled={!onOpenProfile}
+          aria-label={`Open profile for ${displayName}`}
+          className="group relative flex min-h-16 w-full items-center gap-3 rounded-2xl border border-blue-300/15 bg-[#12315f] p-3 text-left transition-all duration-200 hover:border-sky-300/35 hover:bg-[#183d72] hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 disabled:cursor-default disabled:opacity-100 disabled:hover:border-blue-300/15 disabled:hover:bg-[#12315f] disabled:hover:shadow-none"
         >
           <div className="relative shrink-0">
-            <div className="flex size-12 items-center justify-center rounded-xl bg-blue-600 text-lg font-bold text-white">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-300 via-blue-400 to-indigo-400 text-lg font-bold text-blue-950 shadow-lg shadow-blue-950/30 ring-2 ring-sky-100/10">
               {initial}
             </div>
-            <span className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-white ring-1 ring-slate-200">
-              <Check size={10} className="text-blue-600" strokeWidth={3} />
-            </span>
+            <div className="absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full bg-emerald-400 text-emerald-950 ring-2 ring-[#0b2552] shadow-lg">
+              <Check size={12} className="stroke-[3]" />
+            </div>
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-900 truncate">{displayName}</p>
-            <p className="text-xs font-medium text-slate-600 truncate mt-0.5">{role}</p>
-            <p className="text-[11px] text-slate-400 truncate mt-0.5">{emailVal}</p>
+            <p className="text-sm font-bold text-white truncate group-hover:text-sky-100 transition-colors">{displayName}</p>
+            <p className="mt-0.5 truncate text-xs font-semibold text-sky-200">{role}</p>
+            <p className="mt-0.5 truncate text-[11px] text-blue-100/60">{emailVal}</p>
           </div>
 
-          <ChevronRight size={16} className="shrink-0 text-slate-400" />
+          <ChevronRight size={16} className="shrink-0 text-blue-100/45 transition-all group-hover:translate-x-0.5 group-hover:text-sky-100" />
         </button>
       </div>
 
-      <div className="px-6 py-2 border-b border-slate-100">
-        <div className="flex items-center justify-between py-3 border-b border-slate-100">
-          <span className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-            <Radio size={14} className="text-emerald-600" />
-            Session time
+      <div className="mx-4 mt-4 space-y-2 rounded-2xl border border-white/10 bg-[#07172f]/55 p-4 shadow-inner shadow-blue-950/30">
+        <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-100/55">Session status</p>
+        <div className="flex items-center justify-between border-b border-white/10 py-2.5">
+          <span className="flex items-center gap-2 text-xs font-medium text-blue-100/70">
+            <Radio size={14} className="text-sky-400" />
+            {timeLeft !== undefined ? "Time left" : "Session time"}
           </span>
-          <span className="text-sm font-semibold tabular-nums text-slate-900">{fmtTime(elapsed)}</span>
+          <span className="rounded-lg border border-sky-300/15 bg-blue-400/10 px-2.5 py-1 font-mono text-sm font-bold tabular-nums text-sky-100">{fmtTime(timeLeft !== undefined ? Math.max(0, timeLeft) : elapsed)}</span>
         </div>
 
-        <div className="flex items-center justify-between py-3 border-b border-slate-100">
-          <span className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-            <Mic size={14} className={micReady ? "text-emerald-600" : "text-slate-400"} />
+        <div className="flex items-center justify-between border-b border-white/10 py-2.5">
+          <span className="flex items-center gap-2 text-xs font-medium text-blue-100/70">
+            <Mic size={14} className={micReady ? "text-sky-300" : "text-slate-400"} />
             Microphone
           </span>
-          <span className={`text-sm font-semibold ${micReady ? "text-emerald-700" : "text-slate-400"}`}>
+          <span className={`flex items-center gap-1.5 text-xs font-bold ${micReady ? "text-emerald-300" : "text-slate-300/75"}`}>
+            <span className={`size-2 rounded-full ${micReady ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" : "bg-slate-400"}`} />
             {micReady ? "Ready" : "Standby"}
           </span>
         </div>
 
-        <div className="flex items-center justify-between gap-2 py-3 border-b border-slate-100">
-          <span className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-            <Video size={14} className={cameraReady ? "text-emerald-600" : "text-slate-400"} />
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 py-2.5">
+          <span className="flex items-center gap-2 text-xs font-medium text-blue-100/70">
+            <Video size={14} className={cameraReady ? "text-sky-400" : "text-slate-500"} />
             Camera
           </span>
-          <span className={`max-w-[140px] truncate text-right text-xs font-semibold ${cameraReady ? "text-emerald-700" : "text-slate-400"}`}>
+            <span className={`max-w-[140px] truncate text-right text-xs font-bold ${cameraReady ? "text-emerald-300" : "text-slate-400"}`}>
             {cameraReady ? cameraLabel || "Ready" : "Standby"}
           </span>
         </div>
 
-        <div className="flex items-center justify-between py-3">
-          <span className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-            <Cpu size={14} className="text-blue-600" />
+        <div className="flex items-center justify-between gap-2 py-2.5">
+          <span className="flex items-center gap-2 text-xs font-medium text-blue-100/70">
+            <Cpu size={14} className="text-sky-400" />
             Speech input
           </span>
-          <span className="text-sm font-semibold text-slate-800">Any language</span>
+          <span className="rounded-lg border border-sky-300/15 bg-sky-300/10 px-2.5 py-1 font-mono text-xs font-bold text-sky-100">English only</span>
         </div>
       </div>
 
-      <div className="px-4 py-4 flex-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 px-2 mb-3">
-          Interview stages
-        </p>
-        <div className="space-y-2">
+      <div className="flex-1 px-4 py-5">
+        <div className="mb-4 flex items-center justify-between px-0.5">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-100/55">Assessment stages</p>
+          <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[10px] font-bold text-blue-50/80">
+            {String(displayedStage).padStart(2, "0")} / {String(STEPS.length).padStart(2, "0")}
+          </span>
+        </div>
+        <ol className="space-y-2.5">
           {STEPS.map((step, index) => {
             const Icon = step.icon;
             const complete = index < current;
             const active = index === current;
 
             return (
-              <div
+              <li
                 key={step.fullLabel}
-                className={`relative flex items-center gap-3 rounded-2xl border px-3.5 py-3 ${
+                aria-current={active ? "step" : undefined}
+                className={`relative flex items-center gap-3 rounded-2xl px-4 py-3.5 transition-all duration-200 ${
                   active
-                    ? "border-blue-200 bg-blue-50"
+                    ? "border border-sky-300/30 bg-gradient-to-r from-blue-500/30 via-sky-400/15 to-indigo-500/20 shadow-[0_8px_24px_rgba(37,99,235,0.2)]"
                     : complete
-                    ? "border-emerald-200 bg-emerald-50/70"
-                    : "border-slate-200 bg-white"
+                    ? "bg-gradient-to-br from-emerald-600/20 to-emerald-900/10 border border-emerald-500/30"
+                    : "border border-white/[0.07] bg-white/[0.025] hover:border-sky-300/15 hover:bg-white/[0.05]"
                 }`}
               >
                 <span
-                  className={`shrink-0 flex size-9 items-center justify-center rounded-xl ${
+                  className={`shrink-0 flex size-10 items-center justify-center rounded-xl shadow-lg ${
                     complete
-                      ? "bg-emerald-600 text-white"
+                      ? "bg-gradient-to-br from-emerald-400 to-emerald-500 text-slate-900"
                       : active
-                      ? "bg-blue-600 text-white"
-                      : "bg-slate-100 text-slate-500"
+                      ? "bg-gradient-to-br from-sky-300 via-blue-400 to-indigo-500 text-slate-900 shadow-[0_0_12px_rgba(56,189,248,0.4)]"
+                    : "bg-white/[0.08] text-blue-100/45"
                   }`}
                 >
-                  {complete ? <Check size={17} strokeWidth={2.5} /> : <Icon size={17} />}
+                  {complete ? <Check size={18} strokeWidth={2.5} /> : <Icon size={18} />}
                 </span>
 
                 <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-semibold leading-tight ${active ? "text-blue-950" : complete ? "text-emerald-900" : "text-slate-700"}`}>
+                  <p className={`text-sm font-bold leading-tight ${active ? "text-white" : complete ? "text-emerald-200" : "text-blue-50/75"}`}>
                     {step.fullLabel}
                   </p>
-                  <p className={`text-[11px] mt-0.5 font-medium ${active ? "text-blue-700" : complete ? "text-emerald-700" : "text-slate-400"}`}>
+                  <p className={`mt-1 text-[11px] font-semibold ${active ? "text-sky-200" : complete ? "text-emerald-300" : "text-blue-100/45"}`}>
                     {complete ? "Completed" : active ? "In progress" : "Pending"}
                   </p>
                   {active && index === 1 && (
-                    <div className="mt-2 h-1 w-full rounded-full bg-blue-100">
+                    <div className="mt-3">
+                      <span className="mb-1.5 block text-[10px] font-semibold text-blue-100/65">Question {Math.min(questionIndex + 1, totalQuestions)} of {totalQuestions}</span>
                       <div
-                        className="h-full rounded-full bg-blue-600 transition-all duration-500"
-                        style={{ width: `${(questionIndex / totalQuestions) * 100}%` }}
-                      />
+                        className="h-2 w-full overflow-hidden rounded-full bg-white/10"
+                        role="progressbar"
+                        aria-label="Assessment question progress"
+                        aria-valuemin={0}
+                        aria-valuemax={Math.max(1, totalQuestions)}
+                        aria-valuenow={Math.max(0, Math.min(questionIndex + 1, totalQuestions))}
+                      >
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-sky-300 via-blue-400 to-indigo-400 transition-all duration-500 shadow-[0_0_8px_rgba(56,189,248,0.5)]"
+                          style={{ width: `${Math.max(0, Math.min(100, ((questionIndex + 1) / Math.max(1, totalQuestions)) * 100))}%` }}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ol>
       </div>
 
-      <div className="px-4 py-4 space-y-2 shrink-0 border-t border-slate-100">
-        <Link
-          href="/"
-          className="flex items-center justify-center gap-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
-        >
-          <Home size={16} className="text-blue-600" />
-          Back to home
-        </Link>
+      <div className="shrink-0 space-y-3 border-t border-white/10 px-4 py-5">
+        {navigationDisabled ? (
+          <button
+            type="button"
+            disabled
+            className="flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-slate-600 bg-slate-700 px-4 py-3 text-center text-xs font-bold text-slate-300"
+          >
+            <Home size={16} />
+            Finish the recording to leave
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => window.location.href = '/'}
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-400 bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-md shadow-blue-950/25 transition-all duration-200 hover:border-blue-300 hover:bg-blue-500 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300"
+          >
+            <Home size={16} />
+            Back to home
+          </button>
+        )}
 
         {onLogout && (
           <button
             type="button"
             onClick={onLogout}
-            className="flex items-center justify-center gap-2 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 cursor-pointer transition-colors"
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300/20 bg-[#10264d] px-4 py-3 text-sm font-bold text-blue-50 shadow-sm transition-all duration-200 hover:border-rose-400 hover:bg-rose-700 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-300"
           >
             <LogOut size={14} />
             Sign out

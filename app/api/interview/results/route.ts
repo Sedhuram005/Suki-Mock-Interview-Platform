@@ -2,76 +2,45 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { dbConnect } from "@/lib/dbConnect";
 import Interview from "@/models/Interview";
-import { transcribeAndTranslate } from "@/lib/transcribe";
-
-export const runtime = "nodejs";
-export const maxDuration = 300;
 
 type InterviewAnswer = {
   questionId: number;
   questionText: string;
+  transcript?: string;
+  asrEngine?: string;
+  transcriptionStatus?: "completed" | "failed";
+  processedAt?: Date | null;
+  evaluationStatus?: "pending" | "processing" | "completed" | "failed";
+  evaluation?: {
+    communication?: number;
+    technical?: number;
+    relevance?: number;
+    completeness?: number;
+    clarity?: number;
+    overall?: number;
+    summary?: string;
+  } | null;
+  evaluatedAt?: Date | null;
   audioFileId?: mongoose.Types.ObjectId | string | null;
   audioBase64?: string;
-  mimeType?: string;
-  transcript?: string;
-  originalText?: string;
+  draftEnglishText?: string;
   englishText?: string;
-  language?: string;
-  confidence?: number | null;
-  needsReview?: boolean;
+  humanVerified?: boolean;
+  verifiedAt?: Date | null;
   videoFileId?: mongoose.Types.ObjectId | string | null;
-  translationStatus?: "pending" | "done" | "needs_review" | "failed";
   submittedAt?: Date;
 };
 
 type InterviewResult = {
   sessionName: string;
-  status: "In Progress" | "Completed";
+  status: "In Progress" | "Interactive Assessment Complete" | "Completed";
   answers?: InterviewAnswer[];
 };
-
-async function readGridFsAudio(
-  bucket: InstanceType<typeof mongoose.mongo.GridFSBucket>,
-  fileId: mongoose.Types.ObjectId,
-) {
-  const file = await bucket.find({ _id: fileId }).next();
-  if (!file) throw new Error("The original audio file is missing from GridFS.");
-  if (file.length === 0) throw new Error("The original audio file is empty.");
-  if (file.length > 25_000_000) throw new Error("The audio file exceeds the local translation size limit.");
-
-  return new Promise<Buffer>((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    const stream = bucket.openDownloadStream(fileId);
-    stream.on("data", (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
-    stream.once("error", reject);
-    stream.once("end", () => resolve(Buffer.concat(chunks)));
-  });
-}
-
-async function getAudioBytes(
-  answer: InterviewAnswer,
-  audioBucket: InstanceType<typeof mongoose.mongo.GridFSBucket>,
-) {
-  if (answer.audioFileId) {
-    if (!mongoose.isValidObjectId(answer.audioFileId)) throw new Error("The stored audio reference is invalid.");
-    return readGridFsAudio(audioBucket, new mongoose.Types.ObjectId(answer.audioFileId));
-  }
-
-  // Legacy interviews stored audio inline before the GridFS migration.
-  if (answer.audioBase64) {
-    const bytes = Buffer.from(answer.audioBase64, "base64");
-    if (bytes.length > 25_000_000) throw new Error("The audio file exceeds the local translation size limit.");
-    return bytes;
-  }
-
-  throw new Error("No saved audio is available for this answer.");
-}
 
 export async function GET(req: Request) {
   try {
     const params = new URL(req.url).searchParams;
     const id = params.get("interviewId");
-    const refresh = params.get("refresh") === "1";
     const questionIdParam = params.get("questionId");
     const questionId = questionIdParam === null ? null : Number(questionIdParam);
 
@@ -83,87 +52,41 @@ export async function GET(req: Request) {
     }
 
     await dbConnect();
-    const db = mongoose.connection.db;
-    if (!db) throw new Error("MongoDB connection is not ready.");
     const doc = (await Interview.findById(id).lean()) as InterviewResult | null;
     if (!doc) return NextResponse.json({ error: "Interview not found." }, { status: 404 });
 
-    const answersInScope = (doc.answers ?? []).filter(
-      (answer) => questionId === null || answer.questionId === questionId,
-    );
-    const pending = answersInScope.filter(
-      (answer) => refresh || !answer.translationStatus || answer.translationStatus === "pending",
-    );
-    const audioBucket = new mongoose.mongo.GridFSBucket(db, { bucketName: "interviewAudio" });
+    const answers = (doc.answers ?? [])
+      .filter((answer) => questionId === null || answer.questionId === questionId)
+      .map((answer) => {
+        const audioUrl = answer.audioFileId
+          ? `/api/interview/audio/${answer.audioFileId.toString()}`
+          : answer.audioBase64
+            ? `/api/interview/audio?interviewId=${encodeURIComponent(id)}&questionId=${encodeURIComponent(String(answer.questionId))}`
+            : null;
+        const videoUrl = answer.videoFileId
+          ? `/api/interview/video/${answer.videoFileId.toString()}`
+          : null;
+        const humanVerified = answer.humanVerified === true;
 
-    // Keep local CPU inference sequential so one result request does not load multiple model jobs at once.
-    for (const answer of pending) {
-      try {
-        const audioBytes = await getAudioBytes(answer, audioBucket);
-        const result = await transcribeAndTranslate(audioBytes, answer.mimeType ?? "audio/webm");
-        const translationIsReliable = !result.needsReview;
-        const translationStatus = translationIsReliable ? "done" : "needs_review";
-        const englishText = translationIsReliable ? result.englishText : "";
-        await Interview.updateOne(
-          { _id: id, "answers.questionId": answer.questionId },
-          {
-            $set: {
-              "answers.$.englishText": englishText,
-              "answers.$.language": result.language,
-              "answers.$.confidence": result.confidence,
-              "answers.$.needsReview": result.needsReview,
-              "answers.$.translationStatus": translationStatus,
-            },
-          },
-        );
-        Object.assign(answer, result, { englishText, translationStatus });
-      } catch (error) {
-        console.error("Local English translation failed for question", answer.questionId, error);
-        answer.needsReview = true;
-        answer.translationStatus = "failed";
-        const failureSet: Record<string, string | boolean | null> = {
-          "answers.$.needsReview": true,
-          "answers.$.translationStatus": "failed",
+        return {
+          questionId: answer.questionId,
+          questionText: answer.questionText,
+          transcript: answer.transcript || (humanVerified ? answer.englishText : answer.draftEnglishText || answer.englishText) || "",
+          asrEngine: answer.asrEngine || "",
+          transcriptionStatus: answer.transcriptionStatus || (answer.transcript || answer.englishText || answer.draftEnglishText ? "completed" : "failed"),
+          processedAt: answer.processedAt ?? null,
+          evaluationStatus: answer.evaluationStatus || "pending",
+          evaluation: answer.evaluation ?? null,
+          evaluatedAt: answer.evaluatedAt ?? null,
+          draftEnglishText: answer.draftEnglishText || (!humanVerified ? answer.englishText : "") || "",
+          englishText: humanVerified ? answer.englishText ?? "" : "",
+          humanVerified,
+          verifiedAt: answer.verifiedAt ?? null,
+          submittedAt: answer.submittedAt ?? null,
+          audioUrl,
+          videoUrl,
         };
-        // A failed retry must not leave older, unverified English visible.
-        answer.englishText = "";
-        answer.language = "";
-        answer.confidence = null;
-        failureSet["answers.$.englishText"] = "";
-        failureSet["answers.$.language"] = "";
-        failureSet["answers.$.confidence"] = null;
-        await Interview.updateOne(
-          { _id: id, "answers.questionId": answer.questionId },
-          { $set: failureSet },
-        );
-      }
-    }
-
-    const answers = (doc.answers ?? []).map((answer) => {
-      const videoUrl = answer.videoFileId
-        ? `/api/interview/video/${answer.videoFileId.toString()}`
-        : null;
-      const audioUrl = answer.audioFileId
-        ? `/api/interview/audio/${answer.audioFileId.toString()}`
-        : answer.audioBase64
-          ? `/api/interview/audio?interviewId=${encodeURIComponent(id)}&questionId=${encodeURIComponent(String(answer.questionId))}`
-        : null;
-      const englishAnswer = Object.fromEntries(
-        Object.entries(answer).filter(([field]) =>
-          field !== "audioBase64" &&
-          field !== "audioFileId" &&
-          field !== "transcript" &&
-          field !== "originalText" &&
-          field !== "videoFileId",
-        ),
-      );
-      // Older records may still contain machine output that was flagged for review.
-      // Keep it out of the results API until a reliable replacement is available.
-      if (answer.needsReview || answer.translationStatus === "needs_review") {
-        englishAnswer.englishText = "";
-      }
-      return { ...englishAnswer, audioUrl, videoUrl };
-    });
+      });
 
     return NextResponse.json({
       interviewId: id,
@@ -173,6 +96,6 @@ export async function GET(req: Request) {
     });
   } catch (error) {
     console.error("Interview results extraction failed", error);
-    return NextResponse.json({ error: "Could not load English results. Check MongoDB and the local Whisper service." }, { status: 503 });
+    return NextResponse.json({ error: "Could not load interview results. Check the database connection and try again." }, { status: 503 });
   }
 }

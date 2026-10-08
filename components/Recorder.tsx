@@ -14,11 +14,13 @@ export type AnswerData = { blob: Blob | null; videoBlob: Blob | null };
 type RecorderProps = {
   stream: MediaStream;
   onChange: (answer: AnswerData) => void;
+  onRecordingStateChange?: (recording: boolean, audioTrack?: MediaStreamTrack) => void;
   onRefreshStream?: (deviceId?: string) => Promise<MediaStream | null>;
   onRefreshCamera?: (deviceId?: string) => Promise<MediaStream | null>;
+  locked?: boolean;
 };
 
-export default function Recorder({ stream, onChange, onRefreshStream, onRefreshCamera }: RecorderProps) {
+export default function Recorder({ stream, onChange, onRecordingStateChange, onRefreshStream, onRefreshCamera, locked = false }: RecorderProps) {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const videoRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -72,7 +74,8 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
 
     const context = new AudioContext();
     const analyser = context.createAnalyser();
-    analyser.fftSize = 64;
+    analyser.fftSize = 256; // Increased for better resolution
+    analyser.smoothingTimeConstant = 0.8; // Smoother visualization
     const source = context.createMediaStreamSource(stream);
     source.connect(analyser);
     const frequencies = new Uint8Array(analyser.frequencyBinCount);
@@ -84,13 +87,19 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
       analyser.getByteFrequencyData(frequencies);
       analyser.getByteTimeDomainData(waveform);
       const rms = Math.sqrt(waveform.reduce((sum, sample) => sum + (sample - 128) ** 2, 0) / waveform.length);
-      if (rms > 3 && !inputDetectedRef.current) {
+      const hasFreqEnergy = frequencies.some((val) => val > 6);
+      // High sensitivity threshold (0.3 RMS or frequency energy) to reliably detect low/whispered voice
+      if ((rms > 0.3 || hasFreqEnergy) && !inputDetectedRef.current) {
         inputDetectedRef.current = true;
         setInputSignalDetected(true);
       }
       for (let index = 0; index < BAR_COUNT; index += 1) {
         const bar = barRefs.current[index];
-        if (bar) bar.style.height = `${Math.max(6, (frequencies[index] / 255) * 42)}px`;
+        if (bar) {
+          // Dynamic non-linear scaling so even quiet/soft voice animates the level bars clearly
+          const normalized = Math.min(1, Math.pow(frequencies[index] / 255, 0.6) * 1.8);
+          bar.style.height = `${Math.max(6, normalized * 42)}px`;
+        }
       }
       frame = requestAnimationFrame(updateBars);
     };
@@ -137,6 +146,7 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
     if (recorderRef.current?.state === "recording") recorderRef.current.stop();
     if (videoRecorderRef.current?.state === "recording") videoRecorderRef.current.stop();
     setRecording(false);
+    onRecordingStateChange?.(false);
   };
 
   const changeInput = async (deviceId: string) => {
@@ -146,7 +156,14 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
       const nextStream = onRefreshStream
         ? await onRefreshStream(deviceId)
         : await navigator.mediaDevices.getUserMedia({
-            audio: deviceId === "default" ? true : { deviceId: { exact: deviceId } },
+            audio: {
+              ...(deviceId === "default" ? {} : { deviceId: { exact: deviceId } }),
+              echoCancellation: true,
+              noiseSuppression: false,
+              autoGainControl: false,
+              channelCount: 1,
+              sampleRate: 16_000,
+            },
           });
       if (!nextStream) throw new Error("No microphone stream was returned.");
       setSelectedDeviceId(deviceId);
@@ -205,7 +222,17 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
 
     if (needsFreshStream) {
       try {
-        const refreshedStream = onRefreshStream ? await onRefreshStream() : await navigator.mediaDevices.getUserMedia({ audio: true });
+        const refreshedStream = onRefreshStream
+          ? await onRefreshStream()
+          : await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: false,
+                autoGainControl: false,
+                channelCount: 1,
+                sampleRate: 16_000,
+              },
+            });
         if (refreshedStream) {
           activeStream = refreshedStream;
         } else {
@@ -241,40 +268,45 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
         (type) => MediaRecorder.isTypeSupported(type),
       );
       const audioStream = new MediaStream(activeStream.getAudioTracks());
-      const audioRecorder = new MediaRecorder(audioStream, mimeType ? { mimeType } : undefined);
+      const audioRecorder = new MediaRecorder(audioStream, {
+        ...(mimeType ? { mimeType } : {}),
+        audioBitsPerSecond: 64_000,
+      });
       const videoRecorder = new MediaRecorder(activeStream, {
         ...(videoMimeType ? { mimeType: videoMimeType } : {}),
         videoBitsPerSecond: 180_000,
         audioBitsPerSecond: 48_000,
       });
 
-      const finishRecordings = () => {
-        if (stoppedRecordersRef.current < 2) return;
+      let recordingsFinalized = false;
+      const finishRecordings = async () => {
+        if (stoppedRecordersRef.current < 2 || recordingsFinalized) return;
+        recordingsFinalized = true;
 
-        const audioBlob = new Blob(chunksRef.current, {
+        const recordedAudio = new Blob(chunksRef.current, {
           type: audioRecorder.mimeType || "audio/webm",
         });
         const videoBlob = new Blob(videoChunksRef.current, {
           type: videoRecorder.mimeType || "video/webm",
         });
 
-        if (audioBlob.size < 1000 || videoBlob.size < 1000) {
+        if (recordedAudio.size < 1000 || videoBlob.size < 1000) {
           setError("Audio or video was not captured. Check your devices and try recording again.");
           onChange({ blob: null, videoBlob: null });
           return;
         }
-        if (inputMeterAvailableRef.current && !inputDetectedRef.current) {
+        if (inputMeterAvailableRef.current && !inputDetectedRef.current && recordedAudio.size < 4000) {
           setError("No microphone sound was detected. Select the microphone you are speaking into, then record again.");
           onChange({ blob: null, videoBlob: null });
           return;
         }
 
-        recordedBlobRef.current = audioBlob;
+        recordedBlobRef.current = recordedAudio;
         recordedVideoBlobRef.current = videoBlob;
         setRecordedSecs(Math.max(1, durationRef.current));
-        setAudioUrl(URL.createObjectURL(audioBlob));
+        setAudioUrl(URL.createObjectURL(recordedAudio));
         setVideoUrl(URL.createObjectURL(videoBlob));
-        onChange({ blob: audioBlob, videoBlob });
+        onChange({ blob: recordedAudio, videoBlob });
       };
 
       audioRecorder.ondataavailable = (event) => {
@@ -282,26 +314,28 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
       };
       audioRecorder.onstop = () => {
         stoppedRecordersRef.current += 1;
-        finishRecordings();
+        void finishRecordings();
       };
       audioRecorder.onerror = () => {
         setError("Audio recording failed. Check your microphone and try again.");
         onChange({ blob: null, videoBlob: null });
         if (videoRecorder.state === "recording") videoRecorder.stop();
         setRecording(false);
+        onRecordingStateChange?.(false);
       };
       videoRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) videoChunksRef.current.push(event.data);
       };
       videoRecorder.onstop = () => {
         stoppedRecordersRef.current += 1;
-        finishRecordings();
+        void finishRecordings();
       };
       videoRecorder.onerror = () => {
         setError("The video recording failed. Check your camera and try again.");
         onChange({ blob: null, videoBlob: null });
         if (audioRecorder.state === "recording") audioRecorder.stop();
         setRecording(false);
+        onRecordingStateChange?.(false);
       };
 
       chunksRef.current = [];
@@ -313,6 +347,7 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
       startedAtRef.current = Date.now();
       setSeconds(0);
       setRecording(true);
+      onRecordingStateChange?.(true, activeStream.getAudioTracks()[0]);
       timerRef.current = setInterval(() => {
         const elapsed = Math.floor((Date.now() - startedAtRef.current) / 1000);
         setSeconds(elapsed);
@@ -322,6 +357,7 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
       if (recorderRef.current?.state === "recording") recorderRef.current.stop();
       if (videoRecorderRef.current?.state === "recording") videoRecorderRef.current.stop();
       setRecording(false);
+      onRecordingStateChange?.(false);
       setError("Could not start the audio/video recording. Check your devices and try again.");
     }
   };
@@ -344,7 +380,6 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
 
   const remaining = Math.max(0, MAX_SECONDS - seconds);
   const progress = recordedSecs ? Math.min(position / recordedSecs, 1) : 0;
-
   return (
     <div className="space-y-4">
       {audioInputs.length > 1 && (
@@ -353,7 +388,7 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
           <select
             value={selectedDeviceId}
             onChange={(event) => void changeInput(event.target.value)}
-            disabled={recording}
+            disabled={recording || locked}
             className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/15 disabled:bg-slate-100"
           >
             {audioInputs.map((device, index) => (
@@ -370,7 +405,7 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
           <select
             value={stream.getVideoTracks()[0]?.getSettings().deviceId || selectedCameraId}
             onChange={(event) => void changeCamera(event.target.value)}
-            disabled={recording}
+            disabled={recording || locked}
             className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/15 disabled:bg-slate-100"
           >
             {videoInputs.map((device, index) => (
@@ -412,7 +447,7 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
               <button
                 type="button"
                 onClick={stop}
-                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               >
                 <Square size={14} fill="currentColor" aria-hidden="true" /> Stop recording
               </button>
@@ -422,9 +457,10 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
               <button
                 type="button"
                 onClick={start}
+                disabled={locked}
                 aria-label="Start audio and video recording"
                 title="Start audio and video recording"
-                className="grid size-20 place-items-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/30 transition hover:scale-105 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600"
+                className="grid size-20 place-items-center rounded-full bg-blue-600 text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Mic size={30} aria-hidden="true" />
               </button>
@@ -475,7 +511,7 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
               onClick={togglePlayback}
               aria-label={playing ? "Pause recording" : "Play recording"}
               title={playing ? "Pause recording" : "Play recording"}
-              className="grid size-11 shrink-0 place-items-center rounded-full bg-emerald-700 text-white transition hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+              className="grid size-11 shrink-0 place-items-center rounded-full bg-blue-600 text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
             >
               {playing ? <Pause size={18} fill="currentColor" aria-hidden="true" /> : <Play size={18} fill="currentColor" aria-hidden="true" />}
             </button>
@@ -509,13 +545,17 @@ export default function Recorder({ stream, onChange, onRefreshStream, onRefreshC
               Download video
             </a>
           )}
-          <button
-            type="button"
-            onClick={start}
-            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
-          >
-            <RotateCcw size={14} aria-hidden="true" /> Re-record answer
-          </button>
+          {locked ? (
+            <p className="mt-4 text-xs font-medium text-emerald-800">Recording saved. Your English transcript is shown below.</p>
+          ) : (
+            <button
+              type="button"
+              onClick={start}
+              className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+            >
+              <RotateCcw size={14} aria-hidden="true" /> Re-record answer
+            </button>
+          )}
         </div>
       )}
 

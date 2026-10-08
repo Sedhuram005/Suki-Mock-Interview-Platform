@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withRetry } from "@/lib/dbConnect";
+import { MongoConfigurationError, withRetry } from "@/lib/dbConnect";
 import User from "@/models/User";
 
 export async function POST(req: Request) {
@@ -64,8 +64,20 @@ export async function POST(req: Request) {
       user: userResponse,
     });
   } catch (error: unknown) {
-    console.error("Login error:", error);
     const message = error instanceof Error ? error.message : "";
+    const isMongoConfigurationError = error instanceof MongoConfigurationError;
+    if (isMongoConfigurationError) {
+      console.error("Login unavailable: MONGODB_URI is missing or invalid.");
+      return NextResponse.json(
+        {
+          error:
+            "Sign-in is unavailable because the database is not configured. Set MONGODB_URI in .env.local to a URI starting with mongodb:// or mongodb+srv://, then restart the app.",
+        },
+        { status: 503 },
+      );
+    }
+
+    console.error("Login error:", error);
     const isConnectionError =
       error instanceof Error &&
       (error.name === "MongooseServerSelectionError" ||
@@ -80,5 +92,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
-

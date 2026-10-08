@@ -2,9 +2,14 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { dbConnect } from "@/lib/dbConnect";
 import Interview from "@/models/Interview";
+import { AsrError, transcribeAudio } from "@/lib/asr";
 
 const MAX_AUDIO_BYTES = 3_000_000;
+const MAX_SPEECH_AUDIO_BYTES = 10_000_000;
 const MAX_VIDEO_BYTES = 12_000_000;
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 const AUDIO_EXTENSIONS: Record<string, string> = {
   "audio/aac": "aac",
@@ -62,6 +67,8 @@ export async function POST(req: Request) {
     const questionId = Number(form.get("questionId"));
     const questionText = String(form.get("questionText") ?? "");
     const audioFile = form.get("audio");
+    const speechAudioFile = form.get("speechAudio");
+    const liveTranscript = String(form.get("liveTranscript") ?? "").replace(/\s+/g, " ").trim();
     const videoFile = form.get("video");
     const audioMimeType = String(
       (isFile(audioFile) && audioFile.type) || form.get("audioMimeType") || "audio/webm",
@@ -76,27 +83,39 @@ export async function POST(req: Request) {
       !Number.isInteger(questionId) ||
       !questionText.trim() ||
       !isFile(audioFile) ||
-      !isFile(videoFile)
+      !isFile(videoFile) ||
+      (!liveTranscript && !isFile(speechAudioFile))
     ) {
       return NextResponse.json({ error: "Valid audio and video interview files are required." }, { status: 400 });
+    }
+    if (liveTranscript.length > 20_000) {
+      return NextResponse.json({ error: "The English transcript is too long. Please shorten your answer and retry." }, { status: 413 });
     }
 
     const audioExtension = AUDIO_EXTENSIONS[baseMimeType(audioMimeType)];
     const videoExtension = VIDEO_EXTENSIONS[baseMimeType(videoMimeType)];
     if (!audioExtension || !videoExtension) {
       return NextResponse.json(
-        { error: "Unsupported recording format. Record audio as WebM/Opus or MP4 and video as WebM or MP4." },
+        { error: "The audio or video format is not supported. Please record your answer again." },
         { status: 415 },
       );
     }
-    if (audioFile.size > MAX_AUDIO_BYTES || videoFile.size > MAX_VIDEO_BYTES) {
+    if (
+      audioFile.size > MAX_AUDIO_BYTES ||
+      (isFile(speechAudioFile) && speechAudioFile.size > MAX_SPEECH_AUDIO_BYTES) ||
+      videoFile.size > MAX_VIDEO_BYTES
+    ) {
       return NextResponse.json({ error: "The audio or video recording is too large." }, { status: 413 });
     }
 
     const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
+    const speechAudioBuffer = isFile(speechAudioFile) ? Buffer.from(await speechAudioFile.arrayBuffer()) : null;
     const videoBuffer = Buffer.from(await videoFile.arrayBuffer());
-    if (!audioBuffer.length || !videoBuffer.length) {
+    if (!audioBuffer.length || (speechAudioBuffer && !speechAudioBuffer.length) || !videoBuffer.length) {
       return NextResponse.json({ error: "The audio or video recording is empty." }, { status: 400 });
+    }
+    if (!liveTranscript && !speechAudioBuffer?.length) {
+      return NextResponse.json({ error: "Speech transcription audio is missing. Please retry the recording." }, { status: 400 });
     }
 
     audioBucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db!, { bucketName: "interviewAudio" });
@@ -104,20 +123,38 @@ export async function POST(req: Request) {
     audioFileId = new mongoose.Types.ObjectId();
     videoFileId = new mongoose.Types.ObjectId();
 
-    await uploadToGridFs(
+    const hasCompleteLive = Boolean(liveTranscript && liveTranscript.split(/\s+/).filter(Boolean).length >= 1);
+    const [asrOutcome, audioOutcome, videoOutcome] = await Promise.allSettled([
+      hasCompleteLive
+        ? Promise.resolve({ text: liveTranscript, engine: "browser-speech-recognition-en" })
+        : speechAudioBuffer
+          ? transcribeAudio(speechAudioBuffer, { mode: "final", prompt: questionText })
+          : Promise.resolve({ text: liveTranscript || "", engine: "faster-whisper-en" }),
+      uploadToGridFs(
       audioBucket,
       audioFileId,
       `interview-${interviewId}-question-${questionId}.${audioExtension}`,
       audioBuffer,
       { interviewId, questionId, contentType: audioMimeType },
-    );
-    await uploadToGridFs(
+      ),
+      uploadToGridFs(
       videoBucket,
       videoFileId,
       `interview-${interviewId}-question-${questionId}.${videoExtension}`,
       videoBuffer,
       { interviewId, questionId, contentType: videoMimeType },
-    );
+      ),
+    ]);
+    if (asrOutcome.status === "rejected") throw asrOutcome.reason;
+    if (audioOutcome.status === "rejected") throw audioOutcome.reason;
+    if (videoOutcome.status === "rejected") throw videoOutcome.reason;
+    const transcript = asrOutcome.value.text || liveTranscript || "";
+    if (transcript.split(/\s+/).filter(Boolean).length === 0) {
+      await Promise.allSettled([audioBucket.delete(audioFileId), videoBucket.delete(videoFileId)]);
+      audioFileId = null;
+      videoFileId = null;
+      throw new AsrError("No spoken words were detected. Please verify your microphone and speak clearly in English.", 422);
+    }
 
     const updated = await Interview.findOneAndUpdate(
       {
@@ -134,10 +171,14 @@ export async function POST(req: Request) {
             mimeType: audioMimeType,
             videoFileId,
             videoMimeType,
-            translationStatus: "pending",
+            transcript,
+            asrEngine: asrOutcome.value.engine,
+            transcriptionStatus: "completed",
+            processedAt: new Date(),
+            evaluationStatus: "pending",
           },
         },
-        ...(isLast ? { $set: { status: "Completed" } } : {}),
+        ...(isLast ? { $set: { status: "Interactive Assessment Complete" } } : {}),
       },
       { new: true, projection: { status: 1 } },
     );
@@ -158,7 +199,10 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       status: updated.status,
-      translationStatus: "pending",
+      questionId,
+      transcript,
+      asrEngine: asrOutcome.value.engine,
+      evaluationStatus: "pending",
     });
   } catch (error) {
     const cleanup: Promise<unknown>[] = [];
@@ -166,6 +210,9 @@ export async function POST(req: Request) {
     if (videoBucket && videoFileId) cleanup.push(videoBucket.delete(videoFileId).catch(() => {}));
     await Promise.allSettled(cleanup);
     console.error("Interview answer save failed", error);
+    if (error instanceof AsrError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     return NextResponse.json({ error: "Could not save the original audio and video. Please retry." }, { status: 503 });
   }
 }
