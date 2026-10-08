@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Mic, Pause, Play, RotateCcw, Square } from "lucide-react";
+import { CheckCircle2, Mic, Pause, Play, RotateCcw, Square, Clock } from "lucide-react";
 import ErrorNote from "@/components/ErrorNote";
 
 const MAX_SECONDS = 5 * 60;
@@ -424,8 +424,12 @@ export default function Recorder({ stream, onChange, onRecordingStateChange, onR
                 <span className="size-2 animate-pulse rounded-full bg-red-600" />
                 Recording audio and video
               </div>
-              <div className={`mt-2 text-4xl font-semibold tabular-nums ${remaining <= 10 ? "text-amber-700" : "text-slate-900"}`}>
-                {formatTime(seconds)}
+              <div className={`mt-2 text-4xl font-semibold tabular-nums ${remaining <= 30 ? "text-red-600 animate-pulse" : remaining <= 60 ? "text-amber-700" : "text-slate-900"}`}>
+                {formatTime(seconds)} <span className="text-sm font-bold text-slate-400">/ 5:00 limit</span>
+              </div>
+              <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-slate-700">
+                <Clock size={12} className={remaining <= 60 ? "text-amber-600" : "text-slate-500"} />
+                {formatTime(remaining)} remaining before auto-stop
               </div>
               <div className="mt-4 flex h-12 items-center gap-1" aria-label="Live microphone level">
                 {Array.from({ length: BAR_COUNT }, (_, index) => (
@@ -441,8 +445,8 @@ export default function Recorder({ stream, onChange, onRecordingStateChange, onR
               </div>
               <p className="mt-2 text-xs text-slate-500">
                 {inputSignalDetected
-                  ? `${formatTime(remaining)} remaining. Microphone signal detected.`
-                  : `${formatTime(remaining)} remaining. Speak into the selected microphone; no signal detected yet.`}
+                  ? `Microphone signal detected. Auto-stops at 5:00.`
+                  : `Speak into the selected microphone; no signal detected yet.`}
               </p>
               <button
                 type="button"
@@ -464,9 +468,13 @@ export default function Recorder({ stream, onChange, onRecordingStateChange, onR
               >
                 <Mic size={30} aria-hidden="true" />
               </button>
-              <p className="mt-4 text-sm font-medium text-slate-900">Click to start audio and video recording</p>
-              <p className="mt-1 text-xs text-slate-500">
-                Up to {formatTime(MAX_SECONDS)}. Re-record before continuing if needed.
+              <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-blue-200/90 bg-blue-50/90 px-3.5 py-1 text-xs font-bold text-blue-900 shadow-2xs">
+                <Clock size={13} className="text-blue-600" />
+                <span>Time limit: 5 minutes (5:00 max)</span>
+              </div>
+              <p className="mt-2.5 text-sm font-medium text-slate-900">Click to start audio and video recording</p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Answer in English. Re-record before continuing if needed.
               </p>
             </>
           )}

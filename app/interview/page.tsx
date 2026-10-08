@@ -537,13 +537,20 @@ export default function InterviewPage() {
               <p className="text-[11px] text-slate-500 sm:text-xs">Stage {stepIndex + 1} of {STEPS.length}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            {interviewId && (
-              <div className="flex items-center gap-1.5 sm:gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold tabular-nums text-slate-700">
-                <Clock size={15} className="text-blue-600" />
-                {fmtTime(Math.max(0, remaining))}
-              </div>
-            )}
+            <div
+              className={`flex items-center gap-1.5 sm:gap-2 rounded-xl border px-2.5 sm:px-3.5 py-1.5 text-xs sm:text-sm font-bold tabular-nums shadow-xs ${
+                remaining <= 5 * 60
+                  ? "border-rose-300 bg-rose-50 text-rose-700"
+                  : "border-blue-200/90 bg-blue-50/90 text-blue-900"
+              }`}
+              title="Session time limit: 30 minutes total"
+            >
+              <Clock size={14} className={remaining <= 5 * 60 ? "text-rose-600 shrink-0" : "text-blue-600 shrink-0"} />
+              <span className="text-[10px] sm:text-[11px] uppercase tracking-wider font-extrabold text-blue-700/80">
+                Limit:
+              </span>
+              <span>{fmtTime(Math.max(0, remaining))}</span>
+            </div>
             <button
               onClick={handleLogout}
               className="hidden sm:flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 hover:border-slate-300 cursor-pointer"
@@ -588,11 +595,17 @@ export default function InterviewPage() {
             {stepIndex === 1 && (
               <div className="grid gap-6 sm:gap-8 xl:grid-cols-[1fr_350px]">
                 <section key={current.id} className={`${card} fade-up overflow-hidden`}>
-                  <div className="flex items-center justify-between border-b border-slate-100 bg-white px-4 sm:px-8 py-3.5 sm:py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-white px-4 sm:px-8 py-3.5 sm:py-4">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Section A · Screening</span>
-                    <span className="rounded-full bg-blue-600 px-3.5 py-1 text-xs font-bold text-white">
-                      Question {index + 1} of {questions.length}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/90 px-2.5 py-1 text-[11px] font-bold text-amber-800 shadow-2xs">
+                        <Clock size={12} className="text-amber-600" />
+                        5m limit / question
+                      </span>
+                      <span className="rounded-full bg-blue-600 px-3.5 py-1 text-xs font-bold text-white">
+                        Question {index + 1} of {questions.length}
+                      </span>
+                    </div>
                   </div>
                   <div className="p-4 sm:p-8">
                     <h2
