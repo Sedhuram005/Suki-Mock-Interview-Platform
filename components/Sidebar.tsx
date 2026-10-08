@@ -162,7 +162,7 @@ export default function Sidebar({
         <div className="flex items-center justify-between border-b border-white/10 py-2.5">
           <span className="flex items-center gap-2 text-xs font-medium text-blue-100/70">
             <Radio size={14} className="text-sky-400" />
-            {timeLeft !== undefined ? "Time left" : "Session time"}
+            {timeLeft !== undefined ? "Time limit remaining" : "Session time"}
           </span>
           <span className="rounded-lg border border-sky-300/15 bg-blue-400/10 px-2.5 py-1 font-mono text-sm font-bold tabular-nums text-sky-100">{fmtTime(timeLeft !== undefined ? Math.max(0, timeLeft) : elapsed)}</span>
         </div>

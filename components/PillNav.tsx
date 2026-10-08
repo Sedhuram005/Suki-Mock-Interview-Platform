@@ -468,7 +468,16 @@ const PillNav: React.FC<PillNavProps> = ({
           background: 'linear-gradient(135deg, #1e3a8a 0%, #0c1b3f 60%, #030712 100%)'
         }}
       >
-        <ul className="list-none m-0 p-[8px] flex flex-col gap-[6px]">
+        <div className="mx-3 mt-3 mb-2 flex items-center justify-between rounded-xl border border-sky-300/20 bg-sky-400/10 px-3 py-2 text-xs font-semibold text-sky-100">
+          <span className="flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-emerald-400" />
+            Voice assessment
+          </span>
+          <span className="font-bold text-sky-200">
+            ⏱ 30 min limit
+          </span>
+        </div>
+        <ul className="list-none m-0 p-[8px] pt-1 flex flex-col gap-[6px]">
           {[...items, ...mobileItems]
             .filter((item, idx, arr) => arr.findIndex((x) => x.label === item.label) === idx)
             .map((item, i) => {

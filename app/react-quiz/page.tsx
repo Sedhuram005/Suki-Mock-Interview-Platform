@@ -483,8 +483,19 @@ function ReactQuizContent() {
               <p className="text-[11px] text-slate-500 sm:text-xs">Stage 4 of {STEPS.length}</p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold tabular-nums text-slate-700">
-            <Clock size={15} className="text-blue-600" /> {timeLabel}
+          <div
+            className={`flex items-center gap-1.5 sm:gap-2 rounded-xl border px-2.5 sm:px-3.5 py-1.5 text-xs sm:text-sm font-bold tabular-nums shadow-xs ${
+              remaining <= 5 * 60
+                ? "border-rose-300 bg-rose-50 text-rose-700"
+                : "border-blue-200/90 bg-blue-50/90 text-blue-900"
+            }`}
+            title="React Quiz time limit: 30 minutes total"
+          >
+            <Clock size={14} className={remaining <= 5 * 60 ? "text-rose-600 shrink-0" : "text-blue-600 shrink-0"} />
+            <span className="text-[10px] sm:text-[11px] uppercase tracking-wider font-extrabold text-blue-700/80">
+              Limit:
+            </span>
+            <span>{timeLabel}</span>
           </div>
         </header>
 
@@ -496,8 +507,13 @@ function ReactQuizContent() {
           <div className="mx-auto max-w-7xl space-y-4 px-4 py-3 sm:px-8 sm:py-4">
             <section className={`${card} overflow-hidden`}>
               <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-violet-700 px-6 py-6 text-white sm:px-9 sm:py-8">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-100">Next assessment stage</p>
-                <h2 className="font-display mt-3 text-3xl font-bold sm:text-4xl">React Knowledge Check</h2>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-100">Next assessment stage</p>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur-sm px-3 py-1 text-xs font-bold text-white shadow-xs">
+                    <Clock size={13} /> Time limit: 30 minutes
+                  </span>
+                </div>
+                <h2 className="font-display mt-1 text-3xl font-bold sm:text-4xl">React Knowledge Check</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-50 sm:text-base">
                   Answer 20 React multiple-choice questions. Your camera recording stays on for the entire quiz and is saved with your final submission.
                 </p>
