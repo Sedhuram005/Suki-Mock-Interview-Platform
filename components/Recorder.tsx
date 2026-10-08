@@ -468,10 +468,9 @@ export default function Recorder({ stream, onChange, onRecordingStateChange, onR
               >
                 <Mic size={30} aria-hidden="true" />
               </button>
-              <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-blue-200/90 bg-blue-50/90 px-3.5 py-1 text-xs font-bold text-blue-900 shadow-2xs">
-                <Clock size={13} className="text-blue-600" />
-                <span>Time limit: 5 minutes (5:00 max)</span>
-              </div>
+              <p className="mt-4 text-xs font-bold text-blue-900">
+                Time limit: 5 minutes (5:00 max)
+              </p>
               <p className="mt-2.5 text-sm font-medium text-slate-900">Click to start audio and video recording</p>
               <p className="mt-0.5 text-xs text-slate-500">
                 Answer in English. Re-record before continuing if needed.
