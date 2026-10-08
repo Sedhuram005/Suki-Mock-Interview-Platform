@@ -64,7 +64,7 @@ export async function POST(req: Request) {
         bio: bio?.trim() || "",
         skills: skills?.trim() || "",
       },
-      { new: true, upsert: true, runValidators: true }
+      { returnDocument: "after", upsert: true, runValidators: true }
     );
 
     const userResponse = {

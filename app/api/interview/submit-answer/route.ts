@@ -180,7 +180,7 @@ export async function POST(req: Request) {
         },
         ...(isLast ? { $set: { status: "Interactive Assessment Complete" } } : {}),
       },
-      { new: true, projection: { status: 1 } },
+      { returnDocument: "after", projection: { status: 1 } },
     );
 
     if (!updated) {
