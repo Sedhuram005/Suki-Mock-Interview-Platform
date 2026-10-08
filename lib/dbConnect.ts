@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import fs from "fs";
+import path from "path";
 
 declare global {
   var mongooseCache: { conn: typeof mongoose | null; promise: Promise<typeof mongoose> | null };
@@ -12,8 +14,32 @@ export class MongoConfigurationError extends Error {
   }
 }
 
-function getMongoUri() {
-  const mongodbUri = process.env.MONGODB_URI?.trim();
+function getMongoUri(): string {
+  let mongodbUri = process.env.MONGODB_URI?.trim();
+
+  // If missing from process.env, load directly from .env.local or .env
+  if (!mongodbUri) {
+    try {
+      const candidates = [
+        path.resolve(process.cwd(), ".env.local"),
+        path.resolve(process.cwd(), ".env"),
+      ];
+      for (const envFile of candidates) {
+        if (fs.existsSync(envFile)) {
+          const content = fs.readFileSync(envFile, "utf-8");
+          const match = content.match(/^MONGODB_URI\s*=\s*(.+)$/m);
+          if (match && match[1]) {
+            mongodbUri = match[1].trim().replace(/^['"]|['"]$/g, "");
+            process.env.MONGODB_URI = mongodbUri;
+            break;
+          }
+        }
+      }
+    } catch {
+      // Fall through to validation
+    }
+  }
+
   if (
     !mongodbUri ||
     /your_mongodb_connection_string/i.test(mongodbUri) ||
