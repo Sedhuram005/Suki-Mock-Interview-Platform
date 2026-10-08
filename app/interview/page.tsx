@@ -698,12 +698,12 @@ export default function InterviewPage() {
                     <p className="text-sm text-slate-600" aria-live="polite">
                       {!online ? "Offline: reconnect to continue." : busy ? progressMessage : transcriptSavedForCurrent ? "Your transcript is below. Continue when you’re ready." : answer.blob ? "Transcription did not finish. Try again." : "Your answer will transcribe automatically after recording."}
                     </p>
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex w-full sm:w-auto flex-col sm:flex-row items-stretch sm:items-center gap-3">
                       {transcriptSavedForCurrent && (
                         <button
                           onClick={() => void reRecord()}
                           disabled={busy || !online}
-                          className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1 whitespace-nowrap"
+                          className="flex flex-1 sm:flex-none justify-center items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1 whitespace-nowrap"
                         >
                           <RotateCcw size={18} />
                           Re-record
