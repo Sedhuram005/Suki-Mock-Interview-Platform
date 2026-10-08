@@ -17,10 +17,13 @@ export const metadata: Metadata = {
   },
 };
 
+import MediaMockPolyfill from "@/components/MediaMockPolyfill";
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
+        <MediaMockPolyfill />
         <ClickSpark sparkColor="#ffffff" sparkSize={10} sparkRadius={15} sparkCount={8} duration={400}>
           <NavigationLoader />
           {children}
