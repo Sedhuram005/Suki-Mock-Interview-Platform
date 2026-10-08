@@ -4,8 +4,8 @@ import { getDb } from "@/lib/mongodb";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const SPEECH = process.env.SPEECH_SERVICE_URL || process.env.TRANSCRIBE_SERVICE_URL || "http://127.0.0.1:8000";
-  const OLLAMA = process.env.OLLAMA_URL ?? "http://127.0.0.1:11434";
+  const SPEECH = process.env.SPEECH_SERVICE_URL || process.env.TRANSCRIBE_SERVICE_URL;
+  const OLLAMA = process.env.OLLAMA_URL;
   const out: Record<string, unknown> = {};
 
   const check = async (name: string, fn: () => Promise<unknown>) => {
@@ -18,20 +18,36 @@ export async function GET() {
     }
   };
 
-  await check("speech", async () => {
-    const r = await fetch(`${SPEECH}/health`, { signal: AbortSignal.timeout(3000) });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r.json();
-  });
-  await check("ollama", async () => {
-    const r = await fetch(`${OLLAMA}/api/tags`, { signal: AbortSignal.timeout(3000) });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const data = (await r.json()) as { models?: Array<{ name: string }> };
-    return (data.models ?? []).map((m) => m.name);
-  });
   await check("mongodb", async () => {
     await (await getDb()).command({ ping: 1 });
     return "connected";
+  });
+
+  await check("speech", async () => {
+    if (SPEECH) {
+      const r = await fetch(`${SPEECH}/health`, { signal: AbortSignal.timeout(3000) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    }
+    try {
+      const r = await fetch("http://127.0.0.1:8000/health", { signal: AbortSignal.timeout(1000) });
+      if (r.ok) return r.json();
+    } catch {}
+    return { mode: "browser-web-speech", status: "active" };
+  });
+
+  await check("evaluation", async () => {
+    if (OLLAMA) {
+      const r = await fetch(`${OLLAMA}/api/tags`, { signal: AbortSignal.timeout(3000) });
+      if (r.ok) {
+        const data = (await r.json()) as { models?: Array<{ name: string }> };
+        return (data.models ?? []).map((m) => m.name);
+      }
+    }
+    if (process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.includes("your_openai_api_key")) {
+      return "openai-cloud-active";
+    }
+    return "heuristic-scoring-active";
   });
 
   return NextResponse.json(out);

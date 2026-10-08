@@ -74,7 +74,10 @@ async function post(
 }
 
 async function callAsr(wav: Blob, signal: AbortSignal, mode: "live" | "final", prompt: string): Promise<string> {
-  if (SPEECH_URL) {
+  const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
+  const isLocalUrl = Boolean(SPEECH_URL && (SPEECH_URL.includes("127.0.0.1") || SPEECH_URL.includes("localhost")));
+  // In HTTPS, never call an insecure HTTP localhost address to avoid mixed-content blocking
+  if (SPEECH_URL && (!isHttps || !isLocalUrl)) {
     try { return await post(SPEECH_URL.replace(/\/+$/, "") + "/transcribe", "file", wav, signal, mode, prompt); }
     catch (e) {
       if ((e as any)?.name === "AbortError" || signal.aborted) throw e;
@@ -104,14 +107,21 @@ async function callWithRetry(
 }
 
 async function speechUp(): Promise<boolean> {
-  if (SPEECH_URL) {
+  if (typeof window !== "undefined") {
+    const isCloud = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+    const hasWebSpeech = Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+    if (isCloud && hasWebSpeech) return true;
+  }
+  const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
+  const isLocalUrl = Boolean(SPEECH_URL && (SPEECH_URL.includes("127.0.0.1") || SPEECH_URL.includes("localhost")));
+  if (SPEECH_URL && (!isHttps || !isLocalUrl)) {
     try {
-      const r = await fetch(`${SPEECH_URL}/health`, { signal: AbortSignal.timeout(3000) });
+      const r = await fetch(`${SPEECH_URL}/health`, { signal: AbortSignal.timeout(2000) });
       if (r.ok) return true;
     } catch {}
   }
   try {
-    const r = await fetch("/api/speech-health", { signal: AbortSignal.timeout(5000) });
+    const r = await fetch("/api/speech-health", { signal: AbortSignal.timeout(3000) });
     if (r.ok) {
       const d = await r.json();
       return !!d.ok;
@@ -485,7 +495,10 @@ export function useDictation({
       setStatus("listening");
       void serviceCheck.then((ok) => {
         if (!ok && !st.browserSessionUsed && alive() && sess.current === st) {
-          setError("The English speech service is not responding. Your recording is safe; the transcript will be retried after recording.");
+          const hasWebSpeech = typeof window !== "undefined" && Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+          if (!hasWebSpeech) {
+            setError("Live dictation requires Google Chrome, Microsoft Edge, or Apple Safari.");
+          }
         }
       });
     } catch (e) {
