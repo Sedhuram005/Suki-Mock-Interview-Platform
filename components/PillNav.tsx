@@ -182,54 +182,70 @@ const PillNav: React.FC<PillNavProps> = ({
     });
   };
 
-  const toggleMobileMenu = () => {
-    const newState = !isMobileMenuOpen;
-    setIsMobileMenuOpen(newState);
-
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
     const hamburger = hamburgerRef.current;
     const menu = mobileMenuRef.current;
 
     if (hamburger) {
       const lines = hamburger.querySelectorAll('.hamburger-line');
-      if (newState) {
-        gsap.to(lines[0], { rotation: 45, y: 3, duration: 0.3, ease });
-        gsap.to(lines[1], { rotation: -45, y: -3, duration: 0.3, ease });
-      } else {
-        gsap.to(lines[0], { rotation: 0, y: 0, duration: 0.3, ease });
-        gsap.to(lines[1], { rotation: 0, y: 0, duration: 0.3, ease });
+      if (lines.length >= 2) {
+        gsap.to(lines[0], { rotation: 0, y: 0, duration: 0.25, ease });
+        gsap.to(lines[1], { rotation: 0, y: 0, duration: 0.25, ease });
       }
     }
 
     if (menu) {
-      if (newState) {
-        gsap.set(menu, { visibility: 'visible' });
-        gsap.fromTo(
-          menu,
-          { opacity: 0, y: 10, scaleY: 1 },
-          {
-            opacity: 1,
-            y: 0,
-            scaleY: 1,
-            duration: 0.3,
-            ease,
-            transformOrigin: 'top center'
-          }
-        );
-      } else {
-        gsap.to(menu, {
-          opacity: 0,
-          y: 10,
-          scaleY: 1,
-          duration: 0.2,
-          ease,
-          transformOrigin: 'top center',
-          onComplete: () => {
-            gsap.set(menu, { visibility: 'hidden' });
-          }
-        });
+      gsap.to(menu, {
+        opacity: 0,
+        y: 10,
+        scaleY: 1,
+        duration: 0.2,
+        ease,
+        transformOrigin: 'top center',
+        onComplete: () => {
+          gsap.set(menu, { visibility: 'hidden' });
+        }
+      });
+    }
+  };
+
+  const openMobileMenu = () => {
+    setIsMobileMenuOpen(true);
+    const hamburger = hamburgerRef.current;
+    const menu = mobileMenuRef.current;
+
+    if (hamburger) {
+      const lines = hamburger.querySelectorAll('.hamburger-line');
+      if (lines.length >= 2) {
+        gsap.to(lines[0], { rotation: 45, y: 3, duration: 0.25, ease });
+        gsap.to(lines[1], { rotation: -45, y: -3, duration: 0.25, ease });
       }
     }
 
+    if (menu) {
+      gsap.set(menu, { visibility: 'visible' });
+      gsap.fromTo(
+        menu,
+        { opacity: 0, y: 10, scaleY: 1 },
+        {
+          opacity: 1,
+          y: 0,
+          scaleY: 1,
+          duration: 0.25,
+          ease,
+          transformOrigin: 'top center'
+        }
+      );
+    }
+  };
+
+  const toggleMobileMenu = () => {
+    if (isMobileMenuOpen) {
+      closeMobileMenu();
+    } else {
+      openMobileMenu();
+    }
     onMobileMenuClick?.();
   };
 
@@ -412,9 +428,10 @@ const PillNav: React.FC<PillNavProps> = ({
           <button
             ref={hamburgerRef}
             onClick={toggleMobileMenu}
+            type="button"
             aria-label="Toggle menu"
             aria-expanded={isMobileMenuOpen}
-            className="md:hidden rounded-full border-0 flex flex-col items-center justify-center gap-[5px] cursor-pointer p-0 relative ml-2"
+            className="md:hidden rounded-full border-0 flex flex-col items-center justify-center gap-[5px] cursor-pointer p-0 relative ml-2 shadow-md active:scale-95 transition-transform"
             style={{
               width: 'var(--nav-h)',
               height: 'var(--nav-h)',
@@ -422,82 +439,94 @@ const PillNav: React.FC<PillNavProps> = ({
             }}
           >
             <span
-              className="hamburger-line w-[18px] h-0.5 rounded origin-center transition-all duration-[10ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]"
+              className="hamburger-line w-[20px] h-[2.5px] rounded origin-center pointer-events-none"
               style={{ background: 'var(--pill-bg, #fff)' }}
             />
             <span
-              className="hamburger-line w-[18px] h-0.5 rounded origin-center transition-all duration-[10ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]"
+              className="hamburger-line w-[20px] h-[2.5px] rounded origin-center pointer-events-none"
               style={{ background: 'var(--pill-bg, #fff)' }}
             />
           </button>
         </div>
       </nav>
 
+      {/* Backdrop scrim */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-[990] bg-slate-950/60 backdrop-blur-sm md:hidden"
+          onClick={closeMobileMenu}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile Slide-down Menu */}
       <div
         ref={mobileMenuRef}
-        className="md:hidden absolute top-[4em] left-4 right-4 rounded-[27px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-[998] origin-top"
+        className="md:hidden absolute top-[calc(100%+0.6rem)] left-0 right-0 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/20 z-[998] origin-top max-h-[calc(100vh-6.5rem)] overflow-y-auto"
         style={{
           ...cssVars,
-          background: 'var(--base, #0ea5e9)'
+          background: 'linear-gradient(135deg, #1e3a8a 0%, #0c1b3f 60%, #030712 100%)'
         }}
       >
-        <ul className="list-none m-0 p-[4px] flex flex-col gap-[4px]">
-          {[...items, ...mobileItems].map((item, i) => {
-            const defaultStyle: React.CSSProperties = {
-              background: 'var(--pill-bg, #fff)',
-              color: 'var(--pill-text, #0f172a)'
-            };
-            const hoverIn = (e: React.MouseEvent<HTMLAnchorElement>) => {
-              e.currentTarget.style.background = 'var(--base)';
-              e.currentTarget.style.color = 'var(--hover-text, #fff)';
-            };
-            const hoverOut = (e: React.MouseEvent<HTMLAnchorElement>) => {
-              e.currentTarget.style.background = 'var(--pill-bg, #fff)';
-              e.currentTarget.style.color = 'var(--pill-text, #0f172a)';
-            };
+        <ul className="list-none m-0 p-[8px] flex flex-col gap-[6px]">
+          {[...items, ...mobileItems]
+            .filter((item, idx, arr) => arr.findIndex((x) => x.label === item.label) === idx)
+            .map((item, i) => {
+              const defaultStyle: React.CSSProperties = {
+                background: 'rgba(255, 255, 255, 0.95)',
+                color: '#0f172a'
+              };
+              const hoverIn = (e: React.MouseEvent<HTMLAnchorElement>) => {
+                e.currentTarget.style.background = '#2563eb';
+                e.currentTarget.style.color = '#ffffff';
+              };
+              const hoverOut = (e: React.MouseEvent<HTMLAnchorElement>) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)';
+                e.currentTarget.style.color = '#0f172a';
+              };
 
-            const linkClasses =
-              'block py-4 px-6 text-[16px] font-semibold rounded-[50px] transition-all duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)]';
+              const linkClasses =
+                'block py-3.5 px-5 text-[15px] font-bold rounded-2xl transition-all duration-150 shadow-sm text-center';
 
-            return (
-              <li key={`${item.label}-${i}`}>
-                {isRouterLink(item.href) ? (
-                  <Link
-                    href={item.href}
-                    className={linkClasses}
-                    style={defaultStyle}
-                    onMouseEnter={hoverIn}
-                    onMouseLeave={hoverOut}
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      if (item.onClick) item.onClick();
-                    }}
-                  >
-                    {item.label}
-                  </Link>
-                ) : (
-                  <a
-                    href={item.href}
-                    className={linkClasses}
-                    style={defaultStyle}
-                    onMouseEnter={hoverIn}
-                    onMouseLeave={hoverOut}
-                    onClick={(e) => {
-                      if (item.onClick) {
-                        e.preventDefault();
-                        setIsMobileMenuOpen(false);
-                        item.onClick();
-                      } else {
-                        setIsMobileMenuOpen(false);
-                      }
-                    }}
-                  >
-                    {item.label}
-                  </a>
-                )}
-              </li>
-            );
-          })}
+              return (
+                <li key={`${item.label}-${i}`}>
+                  {isRouterLink(item.href) ? (
+                    <Link
+                      href={item.href}
+                      className={linkClasses}
+                      style={defaultStyle}
+                      onMouseEnter={hoverIn}
+                      onMouseLeave={hoverOut}
+                      onClick={() => {
+                        closeMobileMenu();
+                        if (item.onClick) item.onClick();
+                      }}
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <a
+                      href={item.href}
+                      className={linkClasses}
+                      style={defaultStyle}
+                      onMouseEnter={hoverIn}
+                      onMouseLeave={hoverOut}
+                      onClick={(e) => {
+                        if (item.onClick) {
+                          e.preventDefault();
+                          closeMobileMenu();
+                          item.onClick();
+                        } else {
+                          closeMobileMenu();
+                        }
+                      }}
+                    >
+                      {item.label}
+                    </a>
+                  )}
+                </li>
+              );
+            })}
         </ul>
       </div>
     </div>
