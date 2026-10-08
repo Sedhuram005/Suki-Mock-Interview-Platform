@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { dbConnect } from "@/lib/dbConnect";
+import { withRetry } from "@/lib/dbConnect";
 import Interview from "@/models/Interview";
 
 type InterviewAnswer = {
@@ -51,8 +51,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Valid questionId is required." }, { status: 400 });
     }
 
-    await dbConnect();
-    const doc = (await Interview.findById(id).lean()) as InterviewResult | null;
+    const doc = (await withRetry(() =>
+      Interview.findById(id).lean()
+    )) as InterviewResult | null;
     if (!doc) return NextResponse.json({ error: "Interview not found." }, { status: 404 });
 
     const answers = (doc.answers ?? [])
