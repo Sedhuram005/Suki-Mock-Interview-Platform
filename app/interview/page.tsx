@@ -537,6 +537,7 @@ export default function InterviewPage() {
               <p className="text-[11px] text-slate-500 sm:text-xs">Stage {stepIndex + 1} of {STEPS.length}</p>
             </div>
           </div>
+          <div className="flex items-center gap-2 sm:gap-3">
             <div
               className={`flex items-center gap-1.5 sm:gap-2 rounded-xl border px-2.5 sm:px-3.5 py-1.5 text-xs sm:text-sm font-bold tabular-nums shadow-xs ${
                 remaining <= 5 * 60
