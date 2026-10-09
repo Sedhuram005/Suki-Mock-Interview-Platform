@@ -82,9 +82,9 @@ type Props = {
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
   onStartInterview?: () => void;
-  onTestMic?: (...args: unknown[]) => Promise<unknown> | void;
-  onTestCamera?: (...args: unknown[]) => Promise<unknown> | void;
-  onRunAllChecks?: (...args: unknown[]) => Promise<unknown> | void;
+  onTestMic?: (deviceId?: string) => Promise<unknown> | void;
+  onTestCamera?: (deviceId?: string) => Promise<unknown> | void;
+  onRunAllChecks?: () => Promise<unknown> | void;
   isStarting?: boolean;
   online?: boolean;
 };
