@@ -310,7 +310,7 @@ export default function Home() {
       {/* ================= TOP NAVIGATION BAR (PILL NAV) ================= */}
       <header className="relative z-30 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-3">
         <PillNav
-          logo="/suki-logo-cropped.png"
+          logo="/suki-nav-logo.png"
           logoAlt="Suki Software Solutions"
           className="bg-gradient-to-r from-blue-600 via-blue-950 to-black border border-white/15 rounded-[27px] px-2 py-2 shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl"
           baseColor="linear-gradient(110deg, #2563eb 0%, #10275f 54%, #020617 100%)"

@@ -13,7 +13,7 @@ export type PillNavItem = {
 };
 
 export interface PillNavProps {
-  logo: string;
+  logo?: string;
   logoAlt?: string;
   items: PillNavItem[];
   activeHref?: string;
@@ -278,46 +278,37 @@ const PillNav: React.FC<PillNavProps> = ({
         style={cssVars}
       >
         <div className="flex items-center">
-          {isRouterLink(items?.[0]?.href) ? (
-          <Link
-            href={items[0].href}
-            aria-label="Home"
-            onMouseEnter={handleLogoEnter}
-            role="menuitem"
-            ref={el => {
-              logoRef.current = el;
-            }}
-            className="rounded-full p-2 inline-flex items-center justify-center overflow-hidden"
-            style={{
-              width: 'var(--nav-h)',
-              height: 'var(--nav-h)',
-              background: 'var(--pill-bg, #fff)'
-            }}
-          >
-            <Image src={logo} alt={logoAlt} width={96} height={96} ref={logoImgRef} className="w-full h-full object-contain block" />
-          </Link>
-        ) : (
-          <a
-            href={items?.[0]?.href || '#'}
-            aria-label="Home"
-            onMouseEnter={handleLogoEnter}
-            ref={el => {
-              logoRef.current = el;
-            }}
-            className="rounded-full p-2 inline-flex items-center justify-center overflow-hidden"
-            style={{
-              width: 'var(--nav-h)',
-              height: 'var(--nav-h)',
-              background: 'var(--pill-bg, #fff)'
-            }}
-          >
-            <Image src={logo} alt={logoAlt} width={96} height={96} ref={logoImgRef} className="w-full h-full object-contain block" />
-          </a>
-        )}
+          {logo && (
+            <Link
+              href="/"
+              aria-label="Home"
+              onMouseEnter={handleLogoEnter}
+              role="menuitem"
+              ref={el => {
+                logoRef.current = el;
+              }}
+              className="rounded-full p-1.5 inline-flex items-center justify-center overflow-hidden transition-transform duration-200 hover:scale-105 cursor-pointer shadow-xs"
+              style={{
+                width: 'var(--nav-h)',
+                height: 'var(--nav-h)',
+                background: 'var(--pill-bg, #fff)'
+              }}
+            >
+              <Image
+                src={logo}
+                alt={logoAlt}
+                width={48}
+                height={48}
+                ref={logoImgRef}
+                className="w-full h-full object-contain block"
+                priority
+              />
+            </Link>
+          )}
 
         <div
           ref={navItemsRef}
-          className="relative items-center rounded-full hidden md:flex ml-3"
+          className={`relative items-center rounded-full hidden md:flex ${logo ? "ml-3" : ""}`}
           style={{
             height: 'var(--nav-h)',
             background: 'var(--base, #0ea5e9)'

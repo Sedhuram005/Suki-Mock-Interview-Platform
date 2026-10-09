@@ -226,49 +226,35 @@ export default function Sidebar({
               window.location.href = "/";
             }
           }}
-          className={`flex items-center gap-2.5 transition-transform duration-200 ${
+          className={`flex-1 flex items-center transition-transform duration-200 ${
             navigationDisabled ? "cursor-default" : "cursor-pointer group hover:scale-[1.01]"
           }`}
           title={navigationDisabled ? "Suki Software Solutions" : "Return to Home"}
         >
           {/* Logo container */}
-          <div className="bg-white rounded-xl px-3 py-1.5 shadow-md shadow-black/30 border border-white/50 flex items-center justify-center transition-all group-hover:shadow-blue-500/25">
+          <div className="w-full bg-white rounded-xl px-3.5 py-2 shadow-md shadow-black/30 border border-white/50 flex items-center justify-center transition-all group-hover:shadow-blue-500/25">
             <Image
               src="/suki-logo-cropped.png"
               alt="Suki Software Solutions"
-              width={140}
-              height={44}
+              width={160}
+              height={50}
               priority
-              className="h-7 w-auto object-contain"
+              className="h-7 sm:h-8 w-auto object-contain"
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Desktop collapse button */}
-          {!isMobile && (
-            <button
-              type="button"
-              onClick={() => setCollapsed(true)}
-              title="Collapse sidebar"
-              className="flex size-8 items-center justify-center rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-400 hover:text-white transition-all cursor-pointer border border-white/[0.06]"
-            >
-              <PanelLeftClose size={15} />
-            </button>
-          )}
-
-          {/* Mobile close button */}
-          {isMobile && (
-            <button
-              type="button"
-              onClick={onCloseMobile}
-              aria-label="Close menu"
-              className="flex size-8 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition cursor-pointer"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </div>
+        {/* Mobile close button */}
+        {isMobile && (
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            aria-label="Close menu"
+            className="flex size-8 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition cursor-pointer shrink-0 ml-1.5"
+          >
+            <X size={16} />
+          </button>
+        )}
       </div>
 
       {/* ── 2. SCROLLABLE BODY ── */}
@@ -785,13 +771,9 @@ export default function Sidebar({
   return (
     <>
       {/* ── DESKTOP SIDEBAR ── */}
-      <aside
-        className={`hidden lg:flex min-h-0 shrink-0 my-3 ml-3 transition-all duration-300 ease-in-out ${
-          collapsed ? "w-[68px]" : "w-[285px] xl:w-[305px]"
-        }`}
-      >
+      <aside className="hidden lg:flex min-h-0 shrink-0 my-3 ml-3 w-[285px] xl:w-[305px]">
         <div className="w-full h-full rounded-[20px] overflow-hidden border border-[#1e2742] shadow-[0_20px_50px_rgba(2,6,20,0.55)]">
-          {collapsed ? renderCollapsedRail() : renderExpandedContent(false)}
+          {renderExpandedContent(false)}
         </div>
       </aside>
 
