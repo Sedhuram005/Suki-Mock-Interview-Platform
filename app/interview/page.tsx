@@ -501,7 +501,7 @@ export default function InterviewPage() {
   return (
     <div className="fixed inset-0 flex min-h-0 overflow-hidden overscroll-none bg-white text-slate-900">
       <Sidebar
-        current={done ? 2 : stepIndex}
+        current={done ? 3 : stepIndex}
         name={name}
         micReady={!!stream?.getAudioTracks().some((track) => track.readyState === "live")}
         cameraReady={!!stream?.getVideoTracks().some((track) => track.readyState === "live")}
@@ -509,11 +509,18 @@ export default function InterviewPage() {
         userDetails={userDetails}
         questionIndex={index}
         totalQuestions={questions.length}
+        elapsed={elapsed}
         timeLeft={remaining}
         onOpenProfile={() => setUserModalOpen(true)}
         onLogout={handleLogout}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
+        onStartInterview={startInterview}
+        onTestMic={refreshStream}
+        onTestCamera={refreshCameraStream}
+        onRunAllChecks={ensureLiveStream}
+        isStarting={busy}
+        online={online}
       />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col m-1.5 sm:m-3 lg:ml-0 rounded-[20px] sm:rounded-[28px] border border-slate-200 bg-white overflow-hidden">

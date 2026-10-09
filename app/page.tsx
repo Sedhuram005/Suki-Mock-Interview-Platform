@@ -412,8 +412,8 @@ export default function Home() {
           <div className="lg:col-span-6 xl:col-span-7 space-y-6">
 
             {/* Suki Software Solutions Hero Brand Showcase */}
-            <div className="inline-flex items-center gap-3.5 bg-white shadow-sm border border-slate-200 pl-3.5 pr-4 py-2 rounded-2xl shadow-lg backdrop-blur-xl">
-              <div className="bg-white px-2 py-1 rounded-lg">
+            <div className="inline-flex items-center gap-3.5 bg-white/95 border border-white/40 pl-3.5 pr-4 py-2 rounded-2xl shadow-xl backdrop-blur-xl">
+              <div className="bg-transparent px-2 py-1 rounded-lg">
                 <Image
                   src="/suki-logo-cropped.png"
                   alt="Suki Software Solutions"
@@ -421,7 +421,7 @@ export default function Home() {
                   height={57}
                   priority
                   className="h-7 sm:h-8 w-auto object-contain"
-              />
+                />
               </div>
             </div>
 
@@ -438,48 +438,48 @@ export default function Home() {
 
             {/* Value Proposition Pills Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
-              <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white shadow-sm border border-slate-200 shadow-lg backdrop-blur-md">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-slate-900 shrink-0">
+              <div className="group relative flex items-center gap-3 p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-[0_8px_30px_rgba(0,0,0,0.12)] transition-all duration-300 hover:border-blue-400 hover:shadow-[0_12px_35px_rgba(37,99,235,0.22)] hover:-translate-y-1">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 border border-blue-100 text-blue-600 shrink-0 group-hover:scale-105 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-xs">
                   <Mic size={20} />
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900">Natural voice</h4>
-                  <p className="text-xs text-slate-600">Conversational interview flow</p>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-tight">Natural voice</h4>
+                  <p className="text-xs text-slate-500 font-medium leading-tight mt-0.5">Conversational interview flow</p>
                 </div>
               </div>
 
               <div
                 onClick={() => setScoringModalOpen(true)}
-                className="flex items-center gap-3 p-3.5 rounded-2xl bg-white shadow-sm border border-slate-200 shadow-lg backdrop-blur-md cursor-pointer hover:border-slate-300 hover:bg-white shadow-md transition-colors"
+                className="group relative flex items-center gap-3 p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-[0_8px_30px_rgba(0,0,0,0.12)] cursor-pointer transition-all duration-300 hover:border-blue-400 hover:shadow-[0_12px_35px_rgba(37,99,235,0.22)] hover:-translate-y-1"
               >
-                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-slate-900 shrink-0">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 border border-blue-100 text-blue-600 shrink-0 group-hover:scale-105 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-xs">
                   <BarChart3 size={20} />
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900">
+                <div className="min-w-0">
+                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-tight">
                     Four-pillar rubric
                   </h4>
-                  <p className="text-xs text-slate-600">Code, speech, and architecture</p>
+                  <p className="text-xs text-slate-500 font-medium leading-tight mt-0.5">Code, speech, &amp; architecture</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white shadow-sm border border-slate-200 shadow-lg backdrop-blur-md">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-slate-900 shrink-0">
+              <div className="group relative flex items-center gap-3 p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-[0_8px_30px_rgba(0,0,0,0.12)] transition-all duration-300 hover:border-blue-400 hover:shadow-[0_12px_35px_rgba(37,99,235,0.22)] hover:-translate-y-1">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 border border-blue-100 text-blue-600 shrink-0 group-hover:scale-105 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-xs">
                   <FileCheck size={20} />
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900">Scorecard</h4>
-                  <p className="text-xs text-slate-600">Instant strengths and gaps</p>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-tight">Scorecard</h4>
+                  <p className="text-xs text-slate-500 font-medium leading-tight mt-0.5">Instant strengths &amp; gaps</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white shadow-sm border border-slate-200 shadow-lg backdrop-blur-md">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-slate-900 shrink-0">
+              <div className="group relative flex items-center gap-3 p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-[0_8px_30px_rgba(0,0,0,0.12)] transition-all duration-300 hover:border-blue-400 hover:shadow-[0_12px_35px_rgba(37,99,235,0.22)] hover:-translate-y-1">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 border border-blue-100 text-blue-600 shrink-0 group-hover:scale-105 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-xs">
                   <Clock size={20} />
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900">1 Hour Total</h4>
-                  <p className="text-xs text-slate-600">30m Voice + 30m MCQ</p>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-tight">1 Hour Total</h4>
+                  <p className="text-xs text-slate-500 font-medium leading-tight mt-0.5">30m Voice + 30m MCQ</p>
                 </div>
               </div>
             </div>
@@ -487,7 +487,7 @@ export default function Home() {
             <div className="flex flex-wrap items-center gap-3.5 pt-3">
               <Link
                 href="/interview"
-                className="inline-flex items-center gap-3 rounded-xl bg-white hover:bg-slate-100 text-blue-900 font-bold text-sm sm:text-base px-7 py-3.5 shadow-lg transition-colors cursor-pointer"
+                className="inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold text-sm sm:text-base px-7 py-3.5 shadow-xl shadow-blue-600/30 hover:shadow-blue-600/50 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
                 <span>Launch assessment</span>
                 <ArrowRight size={18} />
@@ -496,18 +496,18 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setScoringModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white shadow-md hover:bg-blue-50 text-slate-900 font-semibold text-sm sm:text-base px-6 py-3.5 shadow-lg backdrop-blur-md transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 hover:text-blue-600 font-bold text-sm sm:text-base px-6 py-3.5 shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
-                <BarChart3 size={18} className="text-sky-200" />
+                <BarChart3 size={18} className="text-blue-600" />
                 <span>Scoring rubric</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setTracksModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white shadow-md hover:bg-blue-50 text-slate-900 font-medium text-sm px-5 py-3.5 shadow-lg backdrop-blur-md transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 hover:text-blue-600 font-bold text-sm sm:text-base px-5 py-3.5 shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
-                <Layers size={16} className="text-sky-200" />
+                <Layers size={18} className="text-blue-600" />
                 <span>Browse tracks</span>
               </button>
             </div>
